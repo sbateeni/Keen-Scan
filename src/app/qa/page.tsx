@@ -154,7 +154,8 @@ export default function QAPage() {
     setIsAddTextDialogOpen(false);
   };
 
-  return <TooltipProvider>
+  return (
+    <TooltipProvider>
       <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
         <div className="w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
           <header className="flex justify-between items-center mb-4 md:mb-6 border-b pb-4">
@@ -222,7 +223,7 @@ export default function QAPage() {
                   </div>
 
                   <Card>
-                    <CardContent className="p-4 border-b">
+                    <CardContent className="p-4">
                       <form onSubmit={handleQuestionSubmit} className="flex flex-col w-full items-start gap-2">
                           <Textarea
                             value={question}
@@ -386,5 +387,6 @@ export default function QAPage() {
           )}
         </div>
       </div>
-    </TooltipProvider>;
+    </TooltipProvider>
+  );
 }
