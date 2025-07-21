@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle } from 'lucide-react';
+import { Home, Bot, User, Loader2, Send, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardFooter,
 } from '@/components/ui/card';
 import {
   Dialog,
@@ -155,8 +154,7 @@ export default function QAPage() {
     setIsAddTextDialogOpen(false);
   };
 
-  return (
-    <TooltipProvider>
+  return <TooltipProvider>
       <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
         <div className="w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
           <header className="flex justify-between items-center mb-4 md:mb-6 border-b pb-4">
@@ -388,6 +386,5 @@ export default function QAPage() {
           )}
         </div>
       </div>
-    </TooltipProvider>
-  );
+    </TooltipProvider>;
 }
