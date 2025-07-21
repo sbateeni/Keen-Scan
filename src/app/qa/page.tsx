@@ -224,95 +224,95 @@ export default function QAPage() {
                   </div>
 
                   <Card>
-                      <CardContent className="p-4">
-                          <form onSubmit={handleQuestionSubmit} className="flex flex-col w-full items-start gap-2">
-                              <Textarea
-                                  value={question}
-                                  onChange={(e) => setQuestion(e.target.value)}
-                                  placeholder="اكتب سؤالك هنا..."
-                                  className="flex-grow resize-none w-full"
-                                  rows={2}
-                                  onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                          e.preventDefault();
-                                          handleQuestionSubmit(e as any);
-                                      }
-                                  }}
-                                  disabled={!selectedText}
-                              />
-                              <div className="flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap w-full">
-                                <ToggleGroup 
-                                    type="single" 
-                                    value={answerType} 
-                                    onValueChange={(value) => {
-                                        if (value) setAnswerType(value as AnswerQuestionInput['answerType']);
-                                    }}
-                                    className="justify-start flex-wrap"
-                                    aria-label="نوع السؤال"
-                                >
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
-                                            <Pilcrow className="h-4 w-4" />
-                                            <span className="mr-2 hidden sm:inline">سؤال عام</span>
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>اطرح سؤالاً عامًا واحصل على إجابة مفصلة</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="summary" aria-label="ملخص">
-                                            <FileText className="h-4 w-4" />
-                                            <span className="mr-2 hidden sm:inline">تلخيص</span>
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>اطلب تلخيص الإجابة في فقرة موجزة</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="bullet_points" aria-label="نقاط">
-                                            <List className="h-4 w-4" />
-                                            <span className="mr-2 hidden sm:inline">نقاط</span>
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>اطلب عرض الإجابة على شكل نقاط</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                     <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="true_false" aria-label="صح/خطأ">
-                                            <Binary className="h-4 w-4" />
-                                            <span className="mr-2 hidden sm:inline">صح/خطأ</span>
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>أدخل عبارة لتقييمها كصحيحة أو خاطئة</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                     <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="multiple_choice" aria-label="اختيار من متعدد">
-                                            <ListChecks className="h-4 w-4" />
-                                            <span className="mr-2 hidden sm:inline">اختيار من متعدد</span>
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>أدخل سؤال اختيار من متعدد لتحديد الإجابة الصحيحة</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                </ToggleGroup>
-                                <Button type="submit" disabled={isLoading || !question.trim() || !selectedText}>
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                    <span className="mr-2">إرسال</span>
-                                </Button>
-                              </div>
-                          </form>
-                      </CardContent>
+                    <CardContent className="p-4 border-b">
+                      <form onSubmit={handleQuestionSubmit} className="flex flex-col w-full items-start gap-2">
+                          <Textarea
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            placeholder="اكتب سؤالك هنا..."
+                            className="flex-grow resize-none w-full"
+                            rows={2}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleQuestionSubmit(e as any);
+                                }
+                            }}
+                            disabled={!selectedText}
+                          />
+                          <div className="flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap w-full">
+                            <ToggleGroup 
+                                type="single" 
+                                value={answerType} 
+                                onValueChange={(value) => {
+                                    if (value) setAnswerType(value as AnswerQuestionInput['answerType']);
+                                }}
+                                className="justify-start flex-wrap"
+                                aria-label="نوع السؤال"
+                            >
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
+                                        <Pilcrow className="h-4 w-4" />
+                                        <span className="mr-2 hidden sm:inline">سؤال عام</span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>اطرح سؤالاً عامًا واحصل على إجابة مفصلة</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="summary" aria-label="ملخص">
+                                        <FileText className="h-4 w-4" />
+                                        <span className="mr-2 hidden sm:inline">تلخيص</span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>اطلب تلخيص الإجابة في فقرة موجزة</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="bullet_points" aria-label="نقاط">
+                                        <List className="h-4 w-4" />
+                                        <span className="mr-2 hidden sm:inline">نقاط</span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>اطلب عرض الإجابة على شكل نقاط</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="true_false" aria-label="صح/خطأ">
+                                        <Binary className="h-4 w-4" />
+                                        <span className="mr-2 hidden sm:inline">صح/خطأ</span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>أدخل عبارة لتقييمها كصحيحة أو خاطئة</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="multiple_choice" aria-label="اختيار من متعدد">
+                                        <ListChecks className="h-4 w-4" />
+                                        <span className="mr-2 hidden sm:inline">اختيار من متعدد</span>
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>أدخل سؤال اختيار من متعدد لتحديد الإجابة الصحيحة</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                            </ToggleGroup>
+                            <Button type="submit" disabled={isLoading || !question.trim() || !selectedText}>
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                <span className="mr-2">إرسال</span>
+                            </Button>
+                          </div>
+                      </form>
+                    </CardContent>
                   </Card>
                   
                   <Card className="flex-grow flex flex-col overflow-hidden">
