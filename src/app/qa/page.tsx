@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Home, Bot, User, Loader2, Send, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle } from 'lucide-react';
+import { Home, Bot, User, Loader2, Send, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -31,6 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { AnswerQuestionInput } from '@/ai/flows/answer-question';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 
 interface SavedText {
   id: string;
@@ -57,21 +58,23 @@ export default function QAPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const fetchSavedTexts = () => {
-    const textsFromStorage = localStorage.getItem('savedOcrTexts');
-    if (textsFromStorage) {
-      const parsedTexts: SavedText[] = JSON.parse(textsFromStorage);
-      setSavedTexts(parsedTexts);
-      return parsedTexts;
+    try {
+      const textsFromStorage = localStorage.getItem('savedOcrTexts');
+      if (textsFromStorage) {
+        const parsedTexts: SavedText[] = JSON.parse(textsFromStorage);
+        setSavedTexts(parsedTexts);
+        return parsedTexts;
+      }
+    } catch (error) {
+      console.error("Failed to parse saved texts from localStorage", error);
     }
     return [];
   };
 
   useEffect(() => {
     const texts = fetchSavedTexts();
-    if (texts.length > 0) {
-      if (!selectedText) {
-          setSelectedText(texts[0]);
-      }
+    if (texts.length > 0 && !selectedText) {
+      setSelectedText(texts[0]);
     }
   }, []);
 
@@ -154,7 +157,25 @@ export default function QAPage() {
     setIsAddTextDialogOpen(false);
   };
 
-  return <TooltipProvider>
+  const handleDeleteText = (idToDelete: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent dropdown from opening
+    const updatedTexts = savedTexts.filter(text => text.id !== idToDelete);
+    setSavedTexts(updatedTexts);
+    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
+
+    if (selectedText?.id === idToDelete) {
+        setSelectedText(updatedTexts.length > 0 ? updatedTexts[0] : null);
+        setMessages([]);
+    }
+    
+    toast({
+        title: "تم الحذف",
+        description: "تم حذف النص المحفوظ بنجاح.",
+    })
+  };
+
+  return (
+    <TooltipProvider>
       <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
         <div className="w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
           <header className="flex justify-between items-center mb-4 md:mb-6 border-b pb-4">
@@ -185,7 +206,12 @@ export default function QAPage() {
                               <SelectContent>
                                   {savedTexts.map(text => (
                                       <SelectItem key={text.id} value={text.id}>
-                                          نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                                        <div className="flex justify-between items-center w-full">
+                                          <span>نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleDeleteText(text.id, e)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                        </div>
                                       </SelectItem>
                                   ))}
                               </SelectContent>
@@ -227,7 +253,7 @@ export default function QAPage() {
                           <Textarea
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
-                            placeholder="اكتب سؤالك هنا..."
+                            placeholder={selectedText ? "اكتب سؤالك هنا..." : "الرجاء تحديد نص للاستعلام عنه"}
                             className="flex-grow resize-none w-full"
                             rows={2}
                             onKeyDown={(e) => {
@@ -236,7 +262,7 @@ export default function QAPage() {
                                     handleQuestionSubmit(e as any);
                                 }
                             }}
-                            disabled={!selectedText}
+                            disabled={!selectedText || isLoading}
                           />
                           <div className="flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap w-full">
                             <ToggleGroup 
@@ -247,6 +273,7 @@ export default function QAPage() {
                                 }}
                                 className="justify-start flex-wrap"
                                 aria-label="نوع السؤال"
+                                disabled={!selectedText}
                             >
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -367,7 +394,7 @@ export default function QAPage() {
                           <DialogDescription>
                               ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
                           </DialogDescription>
-                      </Header>
+                      </DialogHeader>
                       <div className="py-4">
                           <Textarea 
                               placeholder="ألصق النص هنا..."
@@ -386,5 +413,6 @@ export default function QAPage() {
           )}
         </div>
       </div>
-    </TooltipProvider>;
+    </TooltipProvider>
+  );
 }
