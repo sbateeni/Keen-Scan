@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
-import { Upload, Clipboard, Check, Loader2, XCircle, Trash2, Wand2 } from 'lucide-react';
+import { Upload, Clipboard, Check, Loader2, XCircle, Trash2, Wand2, Save } from 'lucide-react';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
 import { proofreadText } from '@/ai/flows/proofread-text';
 import { Button } from '@/components/ui/button';
@@ -10,16 +10,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface ImageData {
   url: string;
   file: File;
 }
 
+interface ExtractionProgress {
+    current: number;
+    total: number;
+}
+
 export default function OcrTool() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [combinedText, setCombinedText] = useState('');
   const [isExtractingAll, setIsExtractingAll] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,21 +57,23 @@ export default function OcrTool() {
     setIsExtractingAll(true);
     setError(null);
     setCombinedText('');
+    setExtractionProgress({ current: 0, total: images.length });
 
     let allTexts: string[] = [];
-
+    
     try {
-      for (const image of images) {
-        setCombinedText(prev => prev + `\n\n--- استخراج النص من ${image.file.name} ---`);
-        const photoDataUri = await toBase64(image.file);
-        const result = await extractTextFromImage({ photoDataUri });
-        allTexts.push(result.extractedText);
-        setCombinedText(prev => prev + `\n${result.extractedText}`);
-      }
-
-      setCombinedText('--- جارٍ التدقيق الإملائي وتنسيق النص ---');
-      const proofreadResult = await proofreadText({ text: allTexts.join('\n\n') });
-      setCombinedText(proofreadResult.proofreadText);
+        for (let i = 0; i < images.length; i++) {
+            const image = images[i];
+            setExtractionProgress({ current: i + 1, total: images.length });
+            const photoDataUri = await toBase64(image.file);
+            const result = await extractTextFromImage({ photoDataUri });
+            allTexts.push(result.extractedText);
+        }
+        
+        setExtractionProgress(null);
+        setCombinedText('--- جارٍ التدقيق الإملائي وتنسيق النص ---');
+        const proofreadResult = await proofreadText({ text: allTexts.join('\n\n') });
+        setCombinedText(proofreadResult.proofreadText);
 
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -77,6 +86,7 @@ export default function OcrTool() {
       });
     } finally {
       setIsExtractingAll(false);
+      setExtractionProgress(null);
     }
   };
 
@@ -93,6 +103,25 @@ export default function OcrTool() {
     }, 2000);
   };
 
+  const handleSave = () => {
+    if (!combinedText.trim()) return;
+    const newText = {
+        id: new Date().toISOString(),
+        text: combinedText,
+        date: new Date().toISOString(),
+    };
+    
+    const existingTexts = JSON.parse(localStorage.getItem('savedOcrTexts') || '[]');
+    const updatedTexts = [newText, ...existingTexts];
+
+    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
+
+    toast({
+        title: "تم الحفظ بنجاح",
+        description: "يمكنك عرض النص في صفحة النصوص المحفوظة.",
+    });
+  };
+
   const removeImage = (imageUrl: string) => {
     setImages(prev => prev.filter(img => img.url !== imageUrl));
     URL.revokeObjectURL(imageUrl); // Clean up memory
@@ -104,6 +133,7 @@ export default function OcrTool() {
     setCombinedText('');
     setError(null);
     setIsExtractingAll(false);
+    setExtractionProgress(null);
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
@@ -175,15 +205,33 @@ export default function OcrTool() {
                 <div className="flex justify-between items-center min-h-[32px]">
                     <h3 className="font-semibold">النتائج المدمجة</h3>
                     {combinedText && !isExtractingAll && (
-                        <Button variant="ghost" size="sm" onClick={handleCopy}>
-                        {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
-                        <span className="mr-2">{isCopied ? 'تم النسخ' : 'نسخ'}</span>
-                        </Button>
+                       <div className="flex items-center gap-2">
+                         <Button variant="ghost" size="sm" onClick={handleSave}>
+                            <Save className="h-4 w-4" />
+                            <span className="mr-2">حفظ</span>
+                         </Button>
+                         <Button variant="ghost" size="sm" onClick={handleCopy}>
+                            {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
+                            <span className="mr-2">{isCopied ? 'تم النسخ' : 'نسخ'}</span>
+                         </Button>
+                       </div>
                     )}
                 </div>
+
+                {isExtractingAll && extractionProgress && (
+                    <div className="flex flex-col gap-2 items-center">
+                        <Progress value={(extractionProgress.current / extractionProgress.total) * 100} className="w-full h-2" />
+                        <p className="text-sm text-muted-foreground">
+                            جاري معالجة الصورة {extractionProgress.current} من {extractionProgress.total}
+                        </p>
+                    </div>
+                )}
+                
                 <div className="relative w-full h-full min-h-[200px]">
-                    {isExtractingAll && !combinedText ? (
-                    <Skeleton className="h-full w-full rounded-md" />
+                    {(isExtractingAll && !combinedText) ? (
+                        <div className="flex h-full items-center justify-center rounded-md border border-input bg-background">
+                            {!extractionProgress && <p className="text-muted-foreground">...البدء في الاستخراج</p>}
+                        </div>
                     ) : error ? (
                     <div className="flex h-full items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 p-4">
                             <div className="text-center text-destructive">
@@ -195,7 +243,7 @@ export default function OcrTool() {
                     <Textarea
                         placeholder="سيظهر النص المستخرج هنا."
                         value={combinedText}
-                        readOnly={isExtractingAll}
+                        readOnly={isExtractingAll && extractionProgress !== null}
                         onChange={(e) => setCombinedText(e.target.value)}
                         className="w-full h-full resize-y text-base min-h-[200px] leading-relaxed"
                         dir="rtl"
