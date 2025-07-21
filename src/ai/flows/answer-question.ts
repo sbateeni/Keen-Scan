@@ -11,14 +11,14 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnswerQuestionInputSchema = z.object({
-  question: z.string().describe('The question to be answered. If generating a question, this can be a general instruction like "Generate a question".'),
+  question: z.string().describe('The question to be answered. Can be a standard question, a true/false statement, or a multiple-choice question.'),
   context: z.string().describe('The context text to use for answering the question.'),
-  answerType: z.enum(['default', 'summary', 'bullet_points', 'true_false', 'multiple_choice']).describe('The desired format for the answer.'),
+  answerType: z.enum(['default', 'summary', 'bullet_points', 'true_false', 'multiple_choice']).describe('The format/type of the question being asked.'),
 });
 export type AnswerQuestionInput = z.infer<typeof AnswerQuestionInputSchema>;
 
 const AnswerQuestionOutputSchema = z.object({
-  answer: z.string().describe('The answer to the question based on the provided context, or a generated question in the specified format.'),
+  answer: z.string().describe('The answer to the question based on the provided context.'),
 });
 export type AnswerQuestionOutput = z.infer<typeof AnswerQuestionOutputSchema>;
 
@@ -32,40 +32,31 @@ const answerQuestionPrompt = ai.definePrompt({
   name: 'answerQuestionPrompt',
   input: {schema: AnswerQuestionInputSchema},
   output: {schema: AnswerQuestionOutputSchema},
-  prompt: `You are an expert academic assistant. Your task is to process a user's request based on a provided context. Do not use any external knowledge.
-
-Format your response according to the user's desired 'answerType'.
+  prompt: `You are an expert academic assistant. Your task is to answer a user's question based *only* on the provided context. Do not use any external knowledge. If the answer is not found in the context, state that clearly.
 
 Context:
 ---
 {{{context}}}
 ---
 
-{{#if (eq answerType "true_false")}}
-Based on the context, generate a single, clear true/false question and provide the correct answer on a new line.
-Example:
-Question: The sky is green.
-Answer: False
-{{else if (eq answerType "multiple_choice")}}
-Based on the context, generate a single, clear multiple-choice question with four options (A, B, C, D), where only one is correct. Provide the correct answer on a new line.
-Example:
-Question: What is the capital of France?
-A. London
-B. Berlin
-C. Paris
-D. Madrid
-Answer: C
-{{else}}
 User's Question: {{{question}}}
 
-Now, answer the user's question based *only* on the provided context. If the answer is not found in the context, state that clearly.
-{{#if (eq answerType "summary")}}
-Provide a concise summary as the answer.
+Now, answer the user's question based on the context, following the instruction for the 'answerType'.
+
+{{#if (eq answerType "true_false")}}
+The user's question is a true/false statement. Evaluate if it is true or false based on the context and provide a brief justification.
+Example response:
+True. The context states that [...].
+{{else if (eq answerType "multiple_choice")}}
+The user's question is a multiple-choice question. Determine the correct option (e.g., A, B, C, or D) based on the context and provide a brief justification for your choice.
+Example response:
+C. The context mentions that [...], which corresponds to option C.
+{{else if (eq answerType "summary")}}
+Provide a concise summary as the answer to the user's question.
 {{else if (eq answerType "bullet_points")}}
 Provide the answer in bullet points.
 {{else}}
-Provide a direct and detailed answer.
-{{/if}}
+Provide a direct and detailed answer to the user's question.
 {{/if}}
 
 Answer:`,

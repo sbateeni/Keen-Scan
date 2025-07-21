@@ -156,7 +156,7 @@ export default function QAPage() {
 
                   <Card className="flex-grow flex flex-col overflow-hidden">
                       <div className="p-3 border-b flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap">
-                          <label className="text-sm font-medium">نوع الإجابة:</label>
+                          <label className="text-sm font-medium">نوع السؤال:</label>
                            <ToggleGroup 
                               type="single" 
                               value={answerType} 
@@ -164,28 +164,28 @@ export default function QAPage() {
                                   if (value) setAnswerType(value as AnswerQuestionInput['answerType']);
                               }}
                               className="justify-start flex-wrap"
-                              aria-label="نوع الإجابة"
+                              aria-label="نوع السؤال"
                            >
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
                                       <Pilcrow className="h-4 w-4" />
-                                      <span className="mr-2 hidden sm:inline">مفصل</span>
+                                      <span className="mr-2 hidden sm:inline">سؤال عام</span>
                                   </ToggleGroupItem>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>إجابة مباشرة ومفصلة على السؤال</p>
+                                  <p>اطرح سؤالاً عامًا واحصل على إجابة مفصلة</p>
                                 </TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <ToggleGroupItem value="summary" aria-label="ملخص">
                                       <FileText className="h-4 w-4" />
-                                      <span className="mr-2 hidden sm:inline">ملخص</span>
+                                      <span className="mr-2 hidden sm:inline">تلخيص</span>
                                   </ToggleGroupItem>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>تلخيص الإجابة في فقرة موجزة</p>
+                                  <p>اطلب تلخيص الإجابة في فقرة موجزة</p>
                                 </TooltipContent>
                               </Tooltip>
                               <Tooltip>
@@ -196,7 +196,7 @@ export default function QAPage() {
                                   </ToggleGroupItem>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>عرض الإجابة على شكل نقاط</p>
+                                  <p>اطلب عرض الإجابة على شكل نقاط</p>
                                 </TooltipContent>
                               </Tooltip>
                                <Tooltip>
@@ -207,7 +207,7 @@ export default function QAPage() {
                                   </ToggleGroupItem>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>أنشئ سؤال صح/خطأ من السياق</p>
+                                  <p>أدخل عبارة لتقييمها كصحيحة أو خاطئة</p>
                                 </TooltipContent>
                               </Tooltip>
                                <Tooltip>
@@ -218,7 +218,7 @@ export default function QAPage() {
                                   </ToggleGroupItem>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>أنشئ سؤال اختيار من متعدد من السياق</p>
+                                  <p>أدخل سؤال اختيار من متعدد لتحديد الإجابة الصحيحة</p>
                                 </TooltipContent>
                               </Tooltip>
                           </ToggleGroup>
@@ -227,7 +227,7 @@ export default function QAPage() {
                           <ScrollArea className="h-full">
                                {messages.length === 0 ? (
                                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
-                                      <p>ابدأ بطرح سؤال أو اختر نوع سؤال لتوليده.</p>
+                                      <p>ابدأ بطرح سؤال حول النص المحدد.</p>
                                   </div>
                               ) : (
                                   <div className="space-y-4">
