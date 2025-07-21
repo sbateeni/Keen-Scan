@@ -30,7 +30,7 @@ export async function answerQuestion(
 
 const answerQuestionPrompt = ai.definePrompt({
   name: 'answerQuestionPrompt',
-  input: {schema: AnswerQuestionInputSchema},
+  input: {schema: AnswerQuestionInputSchema.extend({ instruction: z.string() })},
   output: {schema: AnswerQuestionOutputSchema},
   prompt: `You are an expert academic assistant. Your task is to answer a user's question based *only* on the provided context. Do not use any external knowledge. If the answer is not found in the context, state that clearly.
 
@@ -41,23 +41,8 @@ Context:
 
 User's Question: {{{question}}}
 
-Now, answer the user's question based on the context, following the instruction for the 'answerType'.
-
-{{#if (eq answerType "true_false")}}
-The user's question is a true/false statement. Evaluate if it is true or false based on the context and provide a brief justification.
-Example response:
-True. The context states that [...].
-{{else if (eq answerType "multiple_choice")}}
-The user's question is a multiple-choice question. Determine the correct option (e.g., A, B, C, or D) based on the context and provide a brief justification for your choice.
-Example response:
-C. The context mentions that [...], which corresponds to option C.
-{{else if (eq answerType "summary")}}
-Provide a concise summary as the answer to the user's question.
-{{else if (eq answerType "bullet_points")}}
-Provide the answer in bullet points.
-{{else}}
-Provide a direct and detailed answer to the user's question.
-{{/if}}
+Now, answer the user's question based on the context, following this instruction:
+"{{instruction}}"
 
 Answer:`,
 });
@@ -69,7 +54,24 @@ const answerQuestionFlow = ai.defineFlow(
     outputSchema: AnswerQuestionOutputSchema,
   },
   async input => {
-    const {output} = await answerQuestionPrompt(input);
+    let instruction = "Provide a direct and detailed answer to the user's question.";
+    switch (input.answerType) {
+        case 'true_false':
+            instruction = "The user's question is a true/false statement. Evaluate if it is true or false based on the context and provide a brief justification. Example response: True. The context states that [...].";
+            break;
+        case 'multiple_choice':
+            instruction = "The user's question is a multiple-choice question. Determine the correct option (e.g., A, B, C, or D) based on the context and provide a brief justification for your choice. Example response: C. The context mentions that [...], which corresponds to option C.";
+            break;
+        case 'summary':
+            instruction = "Provide a concise summary as the answer to the user's question.";
+            break;
+        case 'bullet_points':
+            instruction = "Provide the answer in bullet points.";
+            break;
+    }
+
+    const promptInput = { ...input, instruction };
+    const {output} = await answerQuestionPrompt(promptInput);
     return output!;
   }
 );
