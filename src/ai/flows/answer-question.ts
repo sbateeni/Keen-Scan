@@ -43,17 +43,17 @@ User's Question: {{{question}}}
 
 Now, answer the user's question based on the context, following the instruction for the 'answerType'.
 
-{{#if (eq answerType "true_false")}}
+{{#if (this.answerType == "true_false")}}
 The user's question is a true/false statement. Evaluate if it is true or false based on the context and provide a brief justification.
 Example response:
 True. The context states that [...].
-{{else if (eq answerType "multiple_choice")}}
+{{else if (this.answerType == "multiple_choice")}}
 The user's question is a multiple-choice question. Determine the correct option (e.g., A, B, C, or D) based on the context and provide a brief justification for your choice.
 Example response:
 C. The context mentions that [...], which corresponds to option C.
-{{else if (eq answerType "summary")}}
+{{else if (this.answerType == "summary")}}
 Provide a concise summary as the answer to the user's question.
-{{else if (eq answerType "bullet_points")}}
+{{else if (this.answerType == "bullet_points")}}
 Provide the answer in bullet points.
 {{else}}
 Provide a direct and detailed answer to the user's question.
