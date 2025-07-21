@@ -31,7 +31,7 @@ interface SavedText {
   date: string;
 }
 
-export default function SavedTextsPage() {
+const SavedTextsPage = () => {
   const [savedTexts, setSavedTexts] = useState<SavedText[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -133,3 +133,5 @@ export default function SavedTextsPage() {
     </div>
   );
 }
+
+export default SavedTextsPage;

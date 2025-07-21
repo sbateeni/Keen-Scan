@@ -44,7 +44,7 @@ interface Message {
     content: string;
 }
 
-export default function QAPage() {
+const QAPage = () => {
   const [savedTexts, setSavedTexts] = useState<SavedText[]>([]);
   const [selectedText, setSelectedText] = useState<SavedText | null>(null);
   const [question, setQuestion] = useState('');
@@ -158,7 +158,7 @@ export default function QAPage() {
   };
 
   const handleDeleteText = (idToDelete: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent dropdown from opening
+    event.stopPropagation(); 
     const updatedTexts = savedTexts.filter(text => text.id !== idToDelete);
     setSavedTexts(updatedTexts);
     localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
@@ -416,3 +416,5 @@ export default function QAPage() {
     </TooltipProvider>
   );
 }
+
+export default QAPage;
