@@ -75,6 +75,7 @@ const QAPage = () => {
     if (texts.length > 0 && !selectedText) {
       setSelectedText(texts[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -419,5 +420,3 @@ const QAPage = () => {
 };
 
 export default QAPage;
-
-    
