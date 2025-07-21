@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles } from 'lucide-react';
+import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles, Pilcrow, List, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -23,6 +20,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { answerQuestion } from '@/ai/flows/answer-question';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { AnswerQuestionInput } from '@/ai/flows/answer-question';
 
 interface SavedText {
   id: string;
@@ -41,6 +40,7 @@ export default function QAPage() {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [answerType, setAnswerType] = useState<AnswerQuestionInput['answerType']>('default');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +78,7 @@ export default function QAPage() {
       const result = await answerQuestion({
         question: question,
         context: selectedText.text,
+        answerType: answerType,
       });
 
       setMessages([...newMessages, { role: 'bot', content: result.answer }]);
@@ -152,6 +153,31 @@ export default function QAPage() {
                 </div>
 
                 <Card className="flex-grow flex flex-col overflow-hidden">
+                    <div className="p-3 border-b flex flex-col sm:flex-row gap-2 items-center justify-between">
+                        <label className="text-sm font-medium">نوع الإجابة:</label>
+                         <ToggleGroup 
+                            type="single" 
+                            value={answerType} 
+                            onValueChange={(value) => {
+                                if (value) setAnswerType(value as AnswerQuestionInput['answerType']);
+                            }}
+                            className="justify-start"
+                            aria-label="نوع الإجابة"
+                         >
+                            <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
+                                <Pilcrow className="h-4 w-4" />
+                                <span className="mr-2 hidden sm:inline">مفصل</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="summary" aria-label="ملخص">
+                                <FileText className="h-4 w-4" />
+                                <span className="mr-2 hidden sm:inline">ملخص</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="bullet_points" aria-label="نقاط">
+                                <List className="h-4 w-4" />
+                                <span className="mr-2 hidden sm:inline">نقاط</span>
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                    </div>
                     <CardContent ref={scrollAreaRef} className="flex-grow p-4 overflow-y-auto">
                         <ScrollArea className="h-full">
                              {messages.length === 0 ? (
@@ -164,7 +190,7 @@ export default function QAPage() {
                                         <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                             {message.role === 'bot' && <div className="p-2 rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>}
                                             <div className={`rounded-lg p-3 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`} dir="rtl">
-                                                <p className="text-sm">{message.content}</p>
+                                                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                                             </div>
                                             {message.role === 'user' && <div className="p-2 rounded-full bg-muted/80"><User className="h-5 w-5 text-foreground" /></div>}
                                         </div>
