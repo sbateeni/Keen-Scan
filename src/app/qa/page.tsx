@@ -109,7 +109,6 @@ export default function QAPage() {
         title: "حدث خطأ",
         description: "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.",
       });
-       setMessages(newMessages); 
     } finally {
       setIsLoading(false);
     }
