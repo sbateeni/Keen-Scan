@@ -2,13 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles, Pilcrow, List, FileText, Binary, ListChecks } from 'lucide-react';
+import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardFooter,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -42,22 +51,32 @@ export default function QAPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [answerType, setAnswerType] = useState<AnswerQuestionInput['answerType']>('default');
+  const [isAddTextDialogOpen, setIsAddTextDialogOpen] = useState(false);
+  const [newTextContent, setNewTextContent] = useState('');
+
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const fetchSavedTexts = () => {
     const textsFromStorage = localStorage.getItem('savedOcrTexts');
     if (textsFromStorage) {
       const parsedTexts: SavedText[] = JSON.parse(textsFromStorage);
       setSavedTexts(parsedTexts);
-      if (parsedTexts.length > 0) {
-        setSelectedText(parsedTexts[0]);
+      return parsedTexts;
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const texts = fetchSavedTexts();
+    if (texts.length > 0) {
+      if (!selectedText) {
+          setSelectedText(texts[0]);
       }
     }
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollAreaRef.current) {
         const viewport = scrollAreaRef.current.querySelector('div');
         if (viewport) {
@@ -90,7 +109,7 @@ export default function QAPage() {
         title: "حدث خطأ",
         description: "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.",
       });
-       setMessages(newMessages); // Revert to previous messages
+       setMessages(newMessages); 
     } finally {
       setIsLoading(false);
     }
@@ -100,9 +119,40 @@ export default function QAPage() {
     const text = savedTexts.find(t => t.id === id);
     if(text) {
         setSelectedText(text);
-        setMessages([]); // Clear chat history on context change
+        setMessages([]); 
     }
   }
+
+  const handleSaveNewText = () => {
+    if (!newTextContent.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'لا يمكن حفظ نص فارغ',
+        description: 'الرجاء إدخال بعض النصوص للمتابعة.',
+      });
+      return;
+    }
+
+    const newSavedText: SavedText = {
+      id: new Date().toISOString(),
+      text: newTextContent,
+      date: new Date().toISOString(),
+    };
+
+    const updatedTexts = [newSavedText, ...savedTexts];
+    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
+    setSavedTexts(updatedTexts);
+    setSelectedText(newSavedText); 
+    setMessages([]);
+
+    toast({
+      title: 'تم حفظ النص بنجاح',
+      description: 'يمكنك الآن طرح أسئلة حوله.',
+    });
+
+    setNewTextContent('');
+    setIsAddTextDialogOpen(false);
+  };
 
   return (
     <TooltipProvider>
@@ -124,12 +174,12 @@ export default function QAPage() {
             </Button>
           </header>
 
-          {savedTexts.length > 0 ? (
+          {savedTexts.length > 0 || isAddTextDialogOpen ? (
               <div className="flex-grow flex flex-col gap-4 overflow-hidden">
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
                       <div className="flex-grow w-full">
                           <label className="text-sm font-medium mb-2 block" htmlFor="context-select">اختر النص الذي تريد طرح أسئلة عنه:</label>
-                          <Select onValueChange={handleSelectChange} defaultValue={selectedText?.id}>
+                          <Select onValueChange={handleSelectChange} value={selectedText?.id || ''}>
                               <SelectTrigger id="context-select" className="w-full">
                                   <SelectValue placeholder="اختر نصًا محفوظًا..." />
                               </SelectTrigger>
@@ -142,16 +192,34 @@ export default function QAPage() {
                               </SelectContent>
                           </Select>
                       </div>
-                      {selectedText && (
-                          <div className='w-full sm:w-auto'>
-                              <p className="text-sm font-medium mb-2 opacity-0 hidden sm:block">المستند</p>
-                              <Card className="w-full sm:w-72">
-                                  <CardContent className="p-3">
-                                  <p className="text-xs text-muted-foreground line-clamp-2" dir='rtl'>{selectedText?.text}</p>
-                                  </CardContent>
-                              </Card>
-                          </div>
-                      )}
+                      <Dialog open={isAddTextDialogOpen} onOpenChange={setIsAddTextDialogOpen}>
+                          <DialogTrigger asChild>
+                              <Button variant="outline" className="w-full sm:w-auto">
+                                <PlusCircle className="ml-2 h-4 w-4"/>
+                                إضافة نص جاهز
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                  <DialogTitle>إضافة نص جديد</DialogTitle>
+                                  <DialogDescription>
+                                    ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
+                                  </DialogDescription>
+                              </DialogHeader>
+                              <div className="py-4">
+                                  <Textarea 
+                                      placeholder="ألصق النص هنا..."
+                                      className="min-h-[200px]"
+                                      value={newTextContent}
+                                      onChange={(e) => setNewTextContent(e.target.value)}
+                                      dir="rtl"
+                                  />
+                              </div>
+                              <DialogFooter>
+                                  <Button onClick={handleSaveNewText}>حفظ النص</Button>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
                   </div>
 
                   <Card className="flex-grow flex flex-col overflow-hidden">
@@ -227,7 +295,10 @@ export default function QAPage() {
                           <ScrollArea className="h-full">
                                {messages.length === 0 ? (
                                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
-                                      <p>ابدأ بطرح سؤال حول النص المحدد.</p>
+                                      {selectedText ? 
+                                        <p>ابدأ بطرح سؤال حول النص المحدد.</p> :
+                                        <p>اختر نصًا أو أضف نصًا جديدًا للبدء.</p>
+                                      }
                                   </div>
                               ) : (
                                   <div className="space-y-4">
@@ -266,8 +337,9 @@ export default function QAPage() {
                                           handleQuestionSubmit(e as any);
                                       }
                                   }}
+                                  disabled={!selectedText}
                               />
-                              <Button type="submit" disabled={isLoading || !question.trim()}>
+                              <Button type="submit" disabled={isLoading || !question.trim() || !selectedText}>
                                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                   <span className="sr-only">إرسال</span>
                               </Button>
@@ -279,8 +351,36 @@ export default function QAPage() {
             <div className="text-center py-16 border-2 border-dashed border-muted-foreground/30 rounded-lg">
               <p className="text-lg text-muted-foreground">لا توجد نصوص محفوظة للبدء.</p>
               <p className="text-sm text-muted-foreground mt-2">
-                  انتقل إلى <Link href="/" className="text-primary underline">الصفحة الرئيسية</Link> لاستخراج النصوص وحفظها أولاً.
+                  انتقل إلى <Link href="/" className="text-primary underline">الصفحة الرئيسية</Link> لاستخراج النصوص وحفظها أولاً، أو قم بإضافة نص جديد.
               </p>
+              <Dialog open={isAddTextDialogOpen} onOpenChange={setIsAddTextDialogOpen}>
+                  <DialogTrigger asChild>
+                      <Button className="mt-4">
+                          <PlusCircle className="ml-2 h-4 w-4"/>
+                          إضافة نص جاهز
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                          <DialogTitle>إضافة نص جديد</DialogTitle>
+                          <DialogDescription>
+                              ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                          <Textarea 
+                              placeholder="ألصق النص هنا..."
+                              className="min-h-[200px]"
+                              value={newTextContent}
+                              onChange={(e) => setNewTextContent(e.target.value)}
+                              dir="rtl"
+                          />
+                      </div>
+                      <DialogFooter>
+                          <Button onClick={handleSaveNewText}>حفظ النص</Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
@@ -288,3 +388,5 @@ export default function QAPage() {
     </TooltipProvider>
   );
 }
+
+    
