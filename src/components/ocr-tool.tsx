@@ -2,8 +2,9 @@
 
 import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
-import { Upload, Clipboard, Check, Loader2, XCircle, Trash2 } from 'lucide-react';
+import { Upload, Clipboard, Check, Loader2, XCircle, Trash2, Wand2 } from 'lucide-react';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
+import { proofreadText } from '@/ai/flows/proofread-text';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,16 +16,13 @@ interface ImageData {
   file: File;
 }
 
-interface ExtractionResult {
-  text: string;
-  isLoading: boolean;
-  error: string | null;
-  isCopied: boolean;
-}
-
 export default function OcrTool() {
   const [images, setImages] = useState<ImageData[]>([]);
-  const [results, setResults] = useState<Record<string, ExtractionResult>>({});
+  const [combinedText, setCombinedText] = useState('');
+  const [isExtractingAll, setIsExtractingAll] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -36,12 +34,6 @@ export default function OcrTool() {
         file: file,
       }));
       setImages(prev => [...prev, ...newImages]);
-
-      const newResults: Record<string, ExtractionResult> = {};
-      newImages.forEach(image => {
-        newResults[image.url] = { text: '', isLoading: false, error: null, isCopied: false };
-      });
-      setResults(prev => ({ ...prev, ...newResults }));
     }
   };
 
@@ -52,65 +44,66 @@ export default function OcrTool() {
     reader.onerror = error => reject(error);
   });
 
-  const handleExtract = async (imageUrl: string, file: File) => {
-    setResults(prev => ({
-      ...prev,
-      [imageUrl]: { ...prev[imageUrl], isLoading: true, error: null },
-    }));
+  const handleExtractAll = async () => {
+    if (images.length === 0) return;
+
+    setIsExtractingAll(true);
+    setError(null);
+    setCombinedText('');
+
+    let allTexts: string[] = [];
 
     try {
-      const photoDataUri = await toBase64(file);
-      const result = await extractTextFromImage({ photoDataUri });
-      setResults(prev => ({
-        ...prev,
-        [imageUrl]: { ...prev[imageUrl], text: result.extractedText, isLoading: false },
-      }));
+      for (const image of images) {
+        setCombinedText(prev => prev + `\n\n--- استخراج النص من ${image.file.name} ---`);
+        const photoDataUri = await toBase64(image.file);
+        const result = await extractTextFromImage({ photoDataUri });
+        allTexts.push(result.extractedText);
+        setCombinedText(prev => prev + `\n${result.extractedText}`);
+      }
+
+      setCombinedText('--- جارٍ التدقيق الإملائي وتنسيق النص ---');
+      const proofreadResult = await proofreadText({ text: allTexts.join('\n\n') });
+      setCombinedText(proofreadResult.proofreadText);
+
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setResults(prev => ({
-        ...prev,
-        [imageUrl]: { ...prev[imageUrl], error: errorMessage, isLoading: false },
-      }));
+      setError(errorMessage);
+      setCombinedText('');
       toast({
         variant: "destructive",
-        title: "Extraction Failed",
-        description: "Please try again with a different image.",
+        title: "فشل الاستخراج",
+        description: "يرجى المحاولة مرة أخرى بصورة مختلفة.",
       });
+    } finally {
+      setIsExtractingAll(false);
     }
   };
 
-  const handleCopy = (imageUrl: string) => {
-    const textToCopy = results[imageUrl]?.text;
-    if (!textToCopy) return;
-    navigator.clipboard.writeText(textToCopy);
-    setResults(prev => ({
-      ...prev,
-      [imageUrl]: { ...prev[imageUrl], isCopied: true },
-    }));
+  const handleCopy = () => {
+    if (!combinedText) return;
+    navigator.clipboard.writeText(combinedText);
+    setIsCopied(true);
     toast({
-      title: "Copied to clipboard!",
-      description: "The extracted text has been copied.",
+      title: "تم النسخ إلى الحافظة!",
+      description: "تم نسخ النص المستخرج.",
     });
     setTimeout(() => {
-      setResults(prev => ({
-        ...prev,
-        [imageUrl]: { ...prev[imageUrl], isCopied: false },
-      }));
+      setIsCopied(false);
     }, 2000);
   };
 
   const removeImage = (imageUrl: string) => {
     setImages(prev => prev.filter(img => img.url !== imageUrl));
-    const newResults = { ...results };
-    delete newResults[imageUrl];
-    setResults(newResults);
     URL.revokeObjectURL(imageUrl); // Clean up memory
   };
 
   const clearAll = () => {
     images.forEach(img => URL.revokeObjectURL(img.url));
     setImages([]);
-    setResults({});
+    setCombinedText('');
+    setError(null);
+    setIsExtractingAll(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
@@ -134,86 +127,84 @@ export default function OcrTool() {
                 multiple
               />
               <Upload className="h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-lg font-semibold text-foreground">Click to upload images</p>
+              <p className="mt-4 text-lg font-semibold text-foreground">انقر لتحميل الصور</p>
               <p className="text-sm text-muted-foreground">PNG, JPG, WEBP, etc.</p>
             </div>
-            {images.length > 0 && (
-                <Button onClick={clearAll} variant="destructive" className="w-full md:w-auto">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear All ({images.length})
-                </Button>
+             {images.length > 0 && (
+                <div className="flex flex-col md:flex-row gap-2 w-full">
+                    <Button onClick={handleExtractAll} disabled={isExtractingAll} className="w-full">
+                        {isExtractingAll ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Wand2 className="ml-2 h-4 w-4" />}
+                        {isExtractingAll ? '...جاري الاستخراج' : `استخراج الكل (${images.length})`}
+                    </Button>
+                    <Button onClick={clearAll} variant="destructive" className="w-full md:w-auto">
+                        <Trash2 className="ml-2 h-4 w-4" />
+                        مسح الكل
+                    </Button>
+                </div>
             )}
           </div>
 
           {images.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {images.map(({url, file}) => {
-                const result = results[url] || { text: '', isLoading: false, error: null, isCopied: false };
-                const { text, isLoading, error, isCopied } = result;
-                
-                return (
-                  <Card key={url} className="overflow-hidden shadow-md">
-                    <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="relative aspect-video w-full">
-                           <Image
-                              src={url}
-                              alt="Uploaded preview"
-                              fill
-                              className="object-contain rounded-md"
-                              data-ai-hint="document photo"
-                           />
-                           <Button 
-                              size="icon" 
-                              variant="destructive" 
-                              className="absolute top-2 right-2 h-7 w-7"
-                              onClick={() => removeImage(url)}
-                            >
-                                <XCircle className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <Button onClick={() => handleExtract(url, file)} disabled={isLoading} className="w-full">
-                          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          {isLoading ? 'Extracting...' : 'Extract Text'}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {images.map(({url}) => (
+                <div key={url} className="relative aspect-square group">
+                   <Image
+                      src={url}
+                      alt="Uploaded preview"
+                      fill
+                      className="object-cover rounded-md"
+                      data-ai-hint="document photo"
+                   />
+                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="h-9 w-9"
+                          onClick={() => removeImage(url)}
+                        >
+                            <XCircle className="h-5 w-5" />
                         </Button>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                         <div className="flex justify-between items-center min-h-[32px]">
-                            <h3 className="font-semibold">Extracted Text</h3>
-                            {text && !isLoading && (
-                                <Button variant="ghost" size="sm" onClick={() => handleCopy(url)}>
-                                {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
-                                <span className="ml-2">{isCopied ? 'Copied' : 'Copy'}</span>
-                                </Button>
-                            )}
-                        </div>
-                        <div className="relative w-full h-full min-h-[150px]">
-                          {isLoading ? (
-                            <Skeleton className="h-full w-full rounded-md" />
-                          ) : error ? (
-                             <div className="flex h-full items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 p-2">
-                                  <div className="text-center text-destructive">
-                                      <XCircle className="h-6 w-6 mx-auto mb-1" />
-                                      <p className="font-semibold text-sm">Extraction Failed</p>
-                                  </div>
-                              </div>
-                          ) : (
-                            <Textarea
-                              placeholder="Extracted text will appear here."
-                              value={text}
-                              onChange={(e) => setResults(prev => ({...prev, [url]: {...prev[url], text: e.target.value}}))}
-                              className="w-full h-full resize-none text-sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+                   </div>
+                </div>
+              ))}
             </div>
           )}
+
+          {(isExtractingAll || combinedText || error) && (
+             <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center min-h-[32px]">
+                    <h3 className="font-semibold">النتائج المدمجة</h3>
+                    {combinedText && !isExtractingAll && (
+                        <Button variant="ghost" size="sm" onClick={handleCopy}>
+                        {isCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
+                        <span className="mr-2">{isCopied ? 'تم النسخ' : 'نسخ'}</span>
+                        </Button>
+                    )}
+                </div>
+                <div className="relative w-full h-full min-h-[200px]">
+                    {isExtractingAll && !combinedText ? (
+                    <Skeleton className="h-full w-full rounded-md" />
+                    ) : error ? (
+                    <div className="flex h-full items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 p-4">
+                            <div className="text-center text-destructive">
+                                <XCircle className="h-8 w-8 mx-auto mb-2" />
+                                <p className="font-semibold">فشل الاستخراج</p>
+                            </div>
+                        </div>
+                    ) : (
+                    <Textarea
+                        placeholder="سيظهر النص المستخرج هنا."
+                        value={combinedText}
+                        readOnly={isExtractingAll}
+                        onChange={(e) => setCombinedText(e.target.value)}
+                        className="w-full h-full resize-y text-base min-h-[200px] leading-relaxed"
+                        dir="rtl"
+                    />
+                    )}
+                </div>
+            </div>
+          )}
+
         </div>
       </CardContent>
     </Card>
