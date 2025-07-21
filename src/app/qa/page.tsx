@@ -1,0 +1,218 @@
+"use client";
+
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Home, Bot, User, Loader2, Send, CornerDownLeft, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { answerQuestion } from '@/ai/flows/answer-question';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface SavedText {
+  id: string;
+  text: string;
+  date: string;
+}
+
+interface Message {
+    role: 'user' | 'bot';
+    content: string;
+}
+
+export default function QAPage() {
+  const [savedTexts, setSavedTexts] = useState<SavedText[]>([]);
+  const [selectedText, setSelectedText] = useState<SavedText | null>(null);
+  const [question, setQuestion] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const textsFromStorage = localStorage.getItem('savedOcrTexts');
+    if (textsFromStorage) {
+      const parsedTexts: SavedText[] = JSON.parse(textsFromStorage);
+      setSavedTexts(parsedTexts);
+      if (parsedTexts.length > 0) {
+        setSelectedText(parsedTexts[0]);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('div');
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+    }
+  }, [messages]);
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim() || !selectedText || isLoading) return;
+
+    const newMessages: Message[] = [...messages, { role: 'user', content: question }];
+    setMessages(newMessages);
+    setQuestion('');
+    setIsLoading(true);
+
+    try {
+      const result = await answerQuestion({
+        question: question,
+        context: selectedText.text,
+      });
+
+      setMessages([...newMessages, { role: 'bot', content: result.answer }]);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "حدث خطأ",
+        description: "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.",
+      });
+       setMessages(newMessages); // Revert to previous messages
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectChange = (id: string) => {
+    const text = savedTexts.find(t => t.id === id);
+    if(text) {
+        setSelectedText(text);
+        setMessages([]); // Clear chat history on context change
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
+      <div className="w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
+        <header className="flex justify-between items-center mb-4 md:mb-6 border-b pb-4">
+          <div className='flex items-center gap-4'>
+            <Sparkles className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">اسأل المستند</h1>
+              <p className="text-muted-foreground text-sm">تحدث مع ملاحظاتك المحفوظة للحصول على إجابات فورية.</p>
+            </div>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/">
+              <Home className="ml-2 h-4 w-4" />
+              العودة للرئيسية
+            </Link>
+          </Button>
+        </header>
+
+        {savedTexts.length > 0 ? (
+            <div className="flex-grow flex flex-col gap-4 overflow-hidden">
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    <div className="flex-grow w-full">
+                        <label className="text-sm font-medium mb-2 block" htmlFor="context-select">اختر النص الذي تريد طرح أسئلة عنه:</label>
+                        <Select onValueChange={handleSelectChange} defaultValue={selectedText?.id}>
+                            <SelectTrigger id="context-select" className="w-full">
+                                <SelectValue placeholder="اختر نصًا محفوظًا..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {savedTexts.map(text => (
+                                    <SelectItem key={text.id} value={text.id}>
+                                        نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {selectedText && (
+                        <div className='w-full sm:w-auto'>
+                            <p className="text-sm font-medium mb-2 opacity-0 hidden sm:block">المستند</p>
+                            <Card className="w-full sm:w-72">
+                                <CardContent className="p-3">
+                                <p className="text-xs text-muted-foreground line-clamp-2" dir='rtl'>{selectedText?.text}</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                </div>
+
+                <Card className="flex-grow flex flex-col overflow-hidden">
+                    <CardContent ref={scrollAreaRef} className="flex-grow p-4 overflow-y-auto">
+                        <ScrollArea className="h-full">
+                             {messages.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+                                    <p>ابدأ بطرح سؤال حول النص المحدد.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {messages.map((message, index) => (
+                                        <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                            {message.role === 'bot' && <div className="p-2 rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>}
+                                            <div className={`rounded-lg p-3 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`} dir="rtl">
+                                                <p className="text-sm">{message.content}</p>
+                                            </div>
+                                            {message.role === 'user' && <div className="p-2 rounded-full bg-muted/80"><User className="h-5 w-5 text-foreground" /></div>}
+                                        </div>
+                                    ))}
+                                    {isLoading && (
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>
+                                            <div className="rounded-lg p-3 bg-muted flex items-center">
+                                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </CardContent>
+                    <CardFooter className="p-4 border-t">
+                        <form onSubmit={handleQuestionSubmit} className="flex w-full items-center gap-2">
+                            <Textarea
+                                value={question}
+                                onChange={(e) => setQuestion(e.target.value)}
+                                placeholder="اكتب سؤالك هنا..."
+                                className="flex-grow resize-none"
+                                rows={1}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleQuestionSubmit(e as any);
+                                    }
+                                }}
+                            />
+                            <Button type="submit" disabled={isLoading || !question.trim()}>
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                <span className="sr-only">إرسال</span>
+                            </Button>
+                        </form>
+                    </CardFooter>
+                </Card>
+            </div>
+        ) : (
+          <div className="text-center py-16 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+            <p className="text-lg text-muted-foreground">لا توجد نصوص محفوظة للبدء.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+                انتقل إلى <Link href="/" className="text-primary underline">الصفحة الرئيسية</Link> لاستخراج النصوص وحفظها أولاً.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

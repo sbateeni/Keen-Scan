@@ -1,7 +1,7 @@
 import OcrTool from '@/components/ocr-tool';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { NotebookText } from 'lucide-react';
+import { NotebookText, MessageCircleQuestion } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -12,11 +12,17 @@ export default function Home() {
           <p className="mt-3 text-lg text-muted-foreground max-w-2xl mx-auto">
             Upload an image to instantly extract, edit, and copy text with our AI-powered OCR tool.
           </p>
-          <div className="absolute top-0 right-0">
+          <div className="absolute top-0 right-0 flex gap-2">
             <Button asChild variant="outline">
               <Link href="/saved">
                 <NotebookText />
                 النصوص المحفوظة
+              </Link>
+            </Button>
+             <Button asChild variant="outline">
+              <Link href="/qa">
+                <MessageCircleQuestion />
+                اسأل المستند
               </Link>
             </Button>
           </div>
