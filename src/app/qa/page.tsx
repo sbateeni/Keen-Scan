@@ -89,8 +89,8 @@ export default function QAPage() {
     e.preventDefault();
     if (!question.trim() || !selectedText || isLoading) return;
 
-    const newMessages: Message[] = [...messages, { role: 'user', content: question }];
-    setMessages(newMessages);
+    const userMessage: Message = { role: 'user', content: question };
+    setMessages(prevMessages => [...prevMessages, userMessage]);
     setQuestion('');
     setIsLoading(true);
 
@@ -101,11 +101,11 @@ export default function QAPage() {
         answerType: answerType,
       });
 
-      setMessages([...newMessages, { role: 'bot', content: result.answer }]);
+      setMessages(prevMessages => [...prevMessages, { role: 'bot', content: result.answer }]);
     } catch (error) {
       console.error(error);
       const errorMessage = "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.";
-      setMessages([...newMessages, { role: 'bot', content: errorMessage }]);
+      setMessages(prevMessages => [...prevMessages, { role: 'bot', content: errorMessage }]);
       toast({
         variant: "destructive",
         title: "حدث خطأ",
