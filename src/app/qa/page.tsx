@@ -78,7 +78,7 @@ export default function QAPage() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('div');
+        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
         if (viewport) {
             viewport.scrollTop = viewport.scrollHeight;
         }
@@ -104,10 +104,12 @@ export default function QAPage() {
       setMessages([...newMessages, { role: 'bot', content: result.answer }]);
     } catch (error) {
       console.error(error);
+      const errorMessage = "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.";
+      setMessages([...newMessages, { role: 'bot', content: errorMessage }]);
       toast({
         variant: "destructive",
         title: "حدث خطأ",
-        description: "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -221,8 +223,8 @@ export default function QAPage() {
                       </Dialog>
                   </div>
 
-                  <Card className="flex-grow flex flex-col overflow-hidden">
-                      <CardContent className="p-4 border-b">
+                  <Card>
+                      <CardContent className="p-4">
                           <form onSubmit={handleQuestionSubmit} className="flex flex-col w-full items-start gap-2">
                               <Textarea
                                   value={question}
@@ -311,8 +313,10 @@ export default function QAPage() {
                               </div>
                           </form>
                       </CardContent>
-
-                      <div ref={scrollAreaRef} className="flex-grow p-4 overflow-y-auto">
+                  </Card>
+                  
+                  <Card className="flex-grow flex flex-col overflow-hidden">
+                      <CardContent ref={scrollAreaRef} className="flex-grow p-4 overflow-y-auto h-full">
                           <ScrollArea className="h-full">
                                {messages.length === 0 ? (
                                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
@@ -343,7 +347,7 @@ export default function QAPage() {
                                   </div>
                               )}
                           </ScrollArea>
-                      </div>
+                      </CardContent>
                   </Card>
               </div>
           ) : (
@@ -365,7 +369,7 @@ export default function QAPage() {
                           <DialogDescription>
                               ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
                           </DialogDescription>
-                      </DialogHeader>
+                      </Header>
                       <div className="py-4">
                           <Textarea 
                               placeholder="ألصق النص هنا..."
