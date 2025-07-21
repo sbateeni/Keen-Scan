@@ -31,7 +31,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { AnswerQuestionInput } from '@/ai/flows/answer-question';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
 
 interface SavedText {
   id: string;
@@ -125,7 +124,7 @@ const QAPage = () => {
         setMessages([]); 
     }
   }
-
+  
   const handleSaveNewText = () => {
     if (!newTextContent.trim()) {
       toast({
@@ -158,7 +157,8 @@ const QAPage = () => {
   };
 
   const handleDeleteText = (idToDelete: string, event: React.MouseEvent) => {
-    event.stopPropagation(); 
+    event.stopPropagation();
+    event.preventDefault(); 
     const updatedTexts = savedTexts.filter(text => text.id !== idToDelete);
     setSavedTexts(updatedTexts);
     localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
@@ -173,6 +173,7 @@ const QAPage = () => {
         description: "تم حذف النص المحفوظ بنجاح.",
     })
   };
+
 
   return (
     <TooltipProvider>
@@ -208,7 +209,7 @@ const QAPage = () => {
                                       <SelectItem key={text.id} value={text.id}>
                                         <div className="flex justify-between items-center w-full">
                                           <span>نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleDeleteText(text.id, e)}>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onMouseDown={(e) => e.preventDefault()} onClick={(e) => handleDeleteText(text.id, e)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                           </Button>
                                         </div>
@@ -415,6 +416,8 @@ const QAPage = () => {
       </div>
     </TooltipProvider>
   );
-}
+};
 
 export default QAPage;
+
+    
