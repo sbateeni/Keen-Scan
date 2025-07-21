@@ -36,9 +36,11 @@ const extractTextFromImagePrompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
-  prompt: `You are an expert OCR reader. Your task is to extract all the text from the provided image.
+  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided image, which contains scientific summaries for exam preparation.
 
-Pay close attention to the structure of the text, but ignore any handwritten notes, colorful highlights, or other markings that are not part of the original printed or digital text. The goal is to get a clean transcription of the main content as if it were a black and white document.
+Pay close attention to the structure, including headings, bullet points, numbered lists, and any scientific formulas or equations. Preserve the original formatting as much as possible.
+
+Ignore any handwritten notes, colorful highlights, or other markings that are not part of the original printed text. The goal is to get a clean, accurate transcription of the study material.
 
 Extract the text from the following image.
 
