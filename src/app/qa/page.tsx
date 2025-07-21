@@ -322,7 +322,7 @@ export default function QAPage() {
                                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
                                       {selectedText ? 
                                         <p>ابدأ بطرح سؤال حول النص المحدد.</p> :
-                                        <p>اختر نصًا أو أضف نصًا جديدًا للبدء.</p>
+                                        <p>اختر نصًا أو أضف نصًا جديدًا للبدأ.</p>
                                       }
                                   </div>
                               ) : (
