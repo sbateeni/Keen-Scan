@@ -7,16 +7,20 @@ import {Label} from '@/components/ui/label';
 import {useToast} from '@/hooks/use-toast';
 import {getApiKey, setApiKey} from '@/lib/keys';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {KeyRound, Save} from 'lucide-react';
 
 export default function ApiKeyManager() {
   const [apiKey, setApiKeyValue] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const {toast} = useToast();
 
   useEffect(() => {
@@ -33,6 +37,7 @@ export default function ApiKeyManager() {
       title: 'تم حفظ مفتاح API',
       description: 'سيتم استخدام مفتاحك لجميع طلبات الذكاء الاصطناعي.',
     });
+    setIsDialogOpen(false);
   };
 
   if (!isMounted) {
@@ -40,40 +45,43 @@ export default function ApiKeyManager() {
   }
 
   return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="api-key">
-        <AccordionTrigger>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            <span className="font-semibold">إدارة مفتاح API</span>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <KeyRound />
+          مفتاح API
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>إدارة مفتاح API</DialogTitle>
+          <DialogDescription>
+            أدخل مفتاح Google AI API الخاص بك أدناه. يتم تخزين مفتاحك فقط في
+            متصفحك.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="api-key-input" className="text-right">
+              المفتاح
+            </Label>
+            <Input
+              id="api-key-input"
+              type="password"
+              placeholder="أدخل مفتاح API الخاص بك هنا"
+              value={apiKey}
+              onChange={e => setApiKeyValue(e.target.value)}
+              className="col-span-3 bg-background"
+            />
           </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="api-key-input">مفتاح Google AI API</Label>
-                <p className="text-sm text-muted-foreground">
-                  مفتاحك يُخزن فقط في متصفحك ولا يتم إرساله إلى أي مكان آخر غير
-                  Google AI.
-                </p>
-                <Input
-                  id="api-key-input"
-                  type="password"
-                  placeholder="أدخل مفتاح API الخاص بك هنا"
-                  value={apiKey}
-                  onChange={e => setApiKeyValue(e.target.value)}
-                  className="bg-background"
-                />
-              </div>
-              <Button onClick={handleSave} disabled={!apiKey}>
-                <Save className="ml-2 h-4 w-4" />
-                حفظ المفتاح
-              </Button>
-            </div>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleSave} disabled={!apiKey}>
+            <Save className="ml-2 h-4 w-4" />
+            حفظ المفتاح
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -29,10 +29,10 @@ export default function Home() {
                 اسأل المستند
               </Link>
             </Button>
+            <ApiKeyManager />
           </div>
         </header>
         <div className="space-y-8">
-          <ApiKeyManager />
           <OcrTool />
         </div>
       </div>
