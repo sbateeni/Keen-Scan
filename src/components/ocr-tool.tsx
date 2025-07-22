@@ -1,6 +1,6 @@
 'use client';
 
-import { extractTextFromDocument } from '@/ai/flows/extract-text-from-image';
+import { extractTextFromDocument } from '@/ai/flows/extract-text-from-document';
 import { proofreadText } from '@/ai/flows/proofread-text';
 import { correctSpelling } from '@/ai/flows/correct-spelling';
 import { Button } from '@/components/ui/button';
