@@ -6,7 +6,6 @@ import {Card, CardContent} from '@/components/ui/card';
 import {Progress} from '@/components/ui/progress';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
-import {getApiKey} from '@/lib/keys';
 import {
   Check,
   Clipboard,
@@ -65,22 +64,6 @@ export default function OcrTool() {
   const handleExtractAll = async () => {
     if (images.length === 0) return;
 
-    let apiKey = getApiKey();
-    if (!apiKey) {
-      // Use the server's key if available, otherwise prompt the user.
-      apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || null;
-    }
-    
-    if (!apiKey) {
-      toast({
-        variant: 'destructive',
-        title: 'لم يتم العثور على مفتاح API',
-        description:
-          'الرجاء إضافة مفتاح Google AI API الخاص بك في قسم إدارة المفاتيح.',
-      });
-      return;
-    }
-
     setIsExtractingAll(true);
     setError(null);
     setCombinedText('');
@@ -93,7 +76,7 @@ export default function OcrTool() {
         const image = images[i];
         setExtractionProgress({current: i + 1, total: images.length});
         const photoDataUri = await toBase64(image.file);
-        const result = await extractTextFromImage({apiKey, photoDataUri});
+        const result = await extractTextFromImage({photoDataUri});
         allTexts.push(result.extractedText);
       }
       setCombinedText(allTexts.join('\n\n'));
@@ -105,7 +88,7 @@ export default function OcrTool() {
       toast({
         variant: 'destructive',
         title: 'فشل الاستخراج',
-        description: 'يرجى المحاولة مرة أخرى بصورة مختلفة.',
+        description: 'يرجى المحاولة مرة أخرى بصورة مختلفة أو التأكد من مفتاح API.',
       });
     } finally {
       setIsExtractingAll(false);

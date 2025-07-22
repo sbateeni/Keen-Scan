@@ -12,7 +12,6 @@ import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const ExtractTextFromImageInputSchema = z.object({
-  apiKey: z.string().describe('The user-provided Google AI API key.'),
   photoDataUri: z
     .string()
     .describe(
@@ -60,7 +59,11 @@ const extractTextFromImageFlow = ai.defineFlow(
     outputSchema: ExtractTextFromImageOutputSchema,
   },
   async input => {
-    const model = googleAI({apiKey: input.apiKey || process.env.GEMINI_API_KEY});
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable not set.');
+    }
+    const model = googleAI({apiKey});
     const {output} = await extractTextFromImagePrompt(input, {model});
     return output!;
   }
