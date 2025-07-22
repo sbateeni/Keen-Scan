@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Home, Bot, User, Loader2, Send, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +29,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { AnswerQuestionInput } from '@/ai/flows/answer-question';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-interface SavedText {
-  id: string;
-  text: string;
-  date: string;
-}
+import { db, type SavedText } from '@/lib/db';
 
 interface Message {
     role: 'user' | 'bot';
@@ -44,7 +37,6 @@ interface Message {
 }
 
 const QAPage = () => {
-  const [savedTexts, setSavedTexts] = useState<SavedText[]>([]);
   const [selectedText, setSelectedText] = useState<SavedText | null>(null);
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,27 +48,16 @@ const QAPage = () => {
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const fetchSavedTexts = () => {
-    try {
-      const textsFromStorage = localStorage.getItem('savedOcrTexts');
-      if (textsFromStorage) {
-        const parsedTexts: SavedText[] = JSON.parse(textsFromStorage);
-        setSavedTexts(parsedTexts);
-        return parsedTexts;
-      }
-    } catch (error) {
-      console.error("Failed to parse saved texts from localStorage", error);
-    }
-    return [];
-  };
+  const savedTexts = useLiveQuery(
+    () => db.savedTexts.orderBy('date').reverse().toArray()
+  );
 
   useEffect(() => {
-    const texts = fetchSavedTexts();
-    if (texts.length > 0 && !selectedText) {
-      setSelectedText(texts[0]);
+    if (savedTexts && savedTexts.length > 0 && !selectedText) {
+      setSelectedText(savedTexts[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [savedTexts]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -119,14 +100,15 @@ const QAPage = () => {
   };
 
   const handleSelectChange = (id: string) => {
-    const text = savedTexts.find(t => t.id === id);
+    const textId = parseInt(id, 10);
+    const text = savedTexts?.find(t => t.id === textId);
     if(text) {
         setSelectedText(text);
         setMessages([]); 
     }
   }
   
-  const handleSaveNewText = () => {
+  const handleSaveNewText = async () => {
     if (!newTextContent.trim()) {
       toast({
         variant: 'destructive',
@@ -136,43 +118,57 @@ const QAPage = () => {
       return;
     }
 
-    const newSavedText: SavedText = {
-      id: new Date().toISOString(),
-      text: newTextContent,
-      date: new Date().toISOString(),
-    };
+    try {
+        const newId = await db.savedTexts.add({
+            text: newTextContent,
+            date: new Date(),
+        });
+        
+        const newSavedText = await db.savedTexts.get(newId);
+        if (newSavedText) {
+            setSelectedText(newSavedText); 
+            setMessages([]);
+        }
 
-    const updatedTexts = [newSavedText, ...savedTexts];
-    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
-    setSavedTexts(updatedTexts);
-    setSelectedText(newSavedText); 
-    setMessages([]);
+        toast({
+          title: 'تم حفظ النص بنجاح',
+          description: 'يمكنك الآن طرح أسئلة حوله.',
+        });
 
-    toast({
-      title: 'تم حفظ النص بنجاح',
-      description: 'يمكنك الآن طرح أسئلة حوله.',
-    });
-
-    setNewTextContent('');
-    setIsAddTextDialogOpen(false);
+        setNewTextContent('');
+        setIsAddTextDialogOpen(false);
+    } catch(error) {
+        console.error("Failed to save new text", error);
+         toast({
+            variant: 'destructive',
+            title: 'فشل الحفظ',
+            description: 'لم نتمكن من حفظ النص الجديد.',
+        });
+    }
   };
 
-  const handleDeleteText = (idToDelete: string, event: React.MouseEvent) => {
+  const handleDeleteText = (idToDelete: number, event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault(); 
-    const updatedTexts = savedTexts.filter(text => text.id !== idToDelete);
-    setSavedTexts(updatedTexts);
-    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
-
-    if (selectedText?.id === idToDelete) {
-        setSelectedText(updatedTexts.length > 0 ? updatedTexts[0] : null);
-        setMessages([]);
-    }
     
-    toast({
-        title: "تم الحذف",
-        description: "تم حذف النص المحفوظ بنجاح.",
-    })
+    db.savedTexts.delete(idToDelete).then(() => {
+        if (selectedText?.id === idToDelete) {
+            const remainingTexts = savedTexts?.filter(t => t.id !== idToDelete);
+            setSelectedText(remainingTexts && remainingTexts.length > 0 ? remainingTexts[0] : null);
+            setMessages([]);
+        }
+        
+        toast({
+            title: "تم الحذف",
+            description: "تم حذف النص المحفوظ بنجاح.",
+        })
+    }).catch(err => {
+        console.error(err);
+        toast({
+            variant: "destructive",
+            title: "فشل الحذف",
+        });
+    });
   };
 
 
@@ -196,18 +192,18 @@ const QAPage = () => {
             </Button>
           </header>
 
-          {savedTexts.length > 0 || isAddTextDialogOpen ? (
+          {savedTexts && savedTexts.length > 0 ? (
               <div className="flex-grow flex flex-col gap-4 overflow-hidden">
                   <div className="flex flex-col sm:flex-row gap-4 items-end">
                       <div className="flex-grow w-full">
                           <label className="text-sm font-medium mb-2 block" htmlFor="context-select">اختر النص الذي تريد طرح أسئلة عنه:</label>
-                          <Select onValueChange={handleSelectChange} value={selectedText?.id || ''}>
+                          <Select onValueChange={handleSelectChange} value={selectedText?.id.toString() || ''}>
                               <SelectTrigger id="context-select" className="w-full">
                                   <SelectValue placeholder="اختر نصًا محفوظًا..." />
                               </SelectTrigger>
                               <SelectContent>
                                   {savedTexts.map(text => (
-                                      <SelectItem key={text.id} value={text.id}>
+                                      <SelectItem key={text.id} value={text.id.toString()}>
                                         <div className="flex justify-between items-center w-full">
                                           <span>نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
                                           <Button variant="ghost" size="icon" className="h-6 w-6" onMouseDown={(e) => e.preventDefault()} onClick={(e) => handleDeleteText(text.id, e)}>
@@ -230,7 +226,7 @@ const QAPage = () => {
                               <DialogHeader>
                                   <DialogTitle>إضافة نص جديد</DialogTitle>
                                   <DialogDescription>
-                                    ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
+                                    ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قاعدة البيانات.
                                   </DialogDescription>
                               </DialogHeader>
                               <div className="py-4">
@@ -394,7 +390,7 @@ const QAPage = () => {
                       <DialogHeader>
                           <DialogTitle>إضافة نص جديد</DialogTitle>
                           <DialogDescription>
-                              ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قائمة النصوص الخاصة بك.
+                              ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قاعدة البيانات.
                           </DialogDescription>
                       </DialogHeader>
                       <div className="py-4">

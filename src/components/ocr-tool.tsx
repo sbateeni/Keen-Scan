@@ -8,9 +8,9 @@ import { proofreadText } from '@/ai/flows/proofread-text';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { db } from '@/lib/db';
 
 interface ImageData {
   url: string;
@@ -103,23 +103,27 @@ export default function OcrTool() {
     }, 2000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!combinedText.trim()) return;
-    const newText = {
-        id: new Date().toISOString(),
-        text: combinedText,
-        date: new Date().toISOString(),
-    };
     
-    const existingTexts = JSON.parse(localStorage.getItem('savedOcrTexts') || '[]');
-    const updatedTexts = [newText, ...existingTexts];
+    try {
+        await db.savedTexts.add({
+            text: combinedText,
+            date: new Date(),
+        });
 
-    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
-
-    toast({
-        title: "تم الحفظ بنجاح",
-        description: "يمكنك عرض النص في صفحة النصوص المحفوظة.",
-    });
+        toast({
+            title: "تم الحفظ بنجاح",
+            description: "يمكنك عرض النص في صفحة النصوص المحفوظة.",
+        });
+    } catch (error) {
+        console.error("Failed to save text to DB", error);
+        toast({
+            variant: "destructive",
+            title: "فشل الحفظ",
+            description: "لم نتمكن من حفظ النص في قاعدة البيانات.",
+        });
+    }
   };
 
   const removeImage = (imageUrl: string) => {

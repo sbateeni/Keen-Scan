@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useLiveQuery } from "dexie-react-hooks";
 import { Home, Trash2, Clipboard, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,36 +25,34 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
+import { db, type SavedText } from '@/lib/db';
 
-interface SavedText {
-  id: string;
-  text: string;
-  date: string;
-}
 
 const SavedTextsPage = () => {
-  const [savedTexts, setSavedTexts] = useState<SavedText[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const { toast } = useToast();
   
-  useEffect(() => {
-    const textsFromStorage = localStorage.getItem('savedOcrTexts');
-    if (textsFromStorage) {
-      setSavedTexts(JSON.parse(textsFromStorage));
-    }
-  }, []);
+  const savedTexts = useLiveQuery(
+    () => db.savedTexts.orderBy('date').reverse().toArray()
+  );
 
-  const deleteText = (id: string) => {
-    const updatedTexts = savedTexts.filter(text => text.id !== id);
-    setSavedTexts(updatedTexts);
-    localStorage.setItem('savedOcrTexts', JSON.stringify(updatedTexts));
-    toast({
-        title: "تم الحذف",
-        description: "تم حذف النص المحفوظ بنجاح.",
-    })
+  const deleteText = (id: number) => {
+    db.savedTexts.delete(id).then(() => {
+        toast({
+            title: "تم الحذف",
+            description: "تم حذف النص المحفوظ بنجاح.",
+        })
+    }).catch(err => {
+        console.error(err);
+        toast({
+            variant: 'destructive',
+            title: "حدث خطأ",
+            description: "فشل حذف النص.",
+        })
+    });
   };
 
-  const handleCopy = (text: string, id: string) => {
+  const handleCopy = (text: string, id: number) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     toast({
@@ -63,6 +62,14 @@ const SavedTextsPage = () => {
       setCopiedId(null);
     }, 2000);
   };
+
+  if (savedTexts === undefined) {
+      return (
+          <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8 md:p-12">
+            جاري تحميل النصوص المحفوظة...
+          </div>
+      )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
