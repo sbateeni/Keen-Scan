@@ -115,7 +115,7 @@ export default function OcrTool() {
         variant: 'destructive',
         title: 'فشل الاستخراج',
         description:
-          'يرجى المحاولة مرة أخرى أو التأكد من إعداد مفتاح API الخاص بك بشكل صحيح.',
+          'حدث خطأ غير متوقع. يرجى التأكد من صحة مفتاح API والمحاولة مرة أخرى.',
       });
       return '';
     } finally {
