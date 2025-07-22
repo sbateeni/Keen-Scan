@@ -212,7 +212,7 @@ export default function OcrTool() {
       setError(errorMessage);
       toast({
         variant: 'destructive',
-        title: 'فشل التصحيح الإملائي',
+        title: 'لماذا فشل التصحيح التلقائي',
         description: 'حدث خطأ ما أثناء تصحيح النص.',
       });
     } finally {
