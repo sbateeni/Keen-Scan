@@ -8,9 +8,11 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const ProofreadTextInputSchema = z.object({
+  apiKey: z.string().describe('The user-provided Google AI API key.'),
   text: z.string().describe('The text to be proofread.'),
 });
 export type ProofreadTextInput = z.infer<typeof ProofreadTextInputSchema>;
@@ -18,13 +20,18 @@ export type ProofreadTextInput = z.infer<typeof ProofreadTextInputSchema>;
 const ProofreadTextOutputSchema = z.object({
   proofreadText: z
     .string()
-    .describe('The proofread text with corrected spelling, grammar, and normalized spacing.'),
+    .describe(
+      'The proofread text with corrected spelling, grammar, and normalized spacing.'
+    ),
 });
 export type ProofreadTextOutput = z.infer<typeof ProofreadTextOutputSchema>;
 
 export async function proofreadText(
   input: ProofreadTextInput
 ): Promise<ProofreadTextOutput> {
+  ai.configure({
+    plugins: [googleAI({apiKey: input.apiKey})],
+  });
   return proofreadTextFlow(input);
 }
 
@@ -46,7 +53,7 @@ const proofreadTextFlow = ai.defineFlow(
   },
   async input => {
     if (!input.text.trim()) {
-        return { proofreadText: "" };
+      return {proofreadText: ''};
     }
     const {output} = await proofreadTextPrompt(input);
     return output!;

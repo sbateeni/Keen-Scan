@@ -8,27 +8,36 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const ExtractTextFromImageInputSchema = z.object({
+  apiKey: z.string().describe('The user-provided Google AI API key.'),
   photoDataUri: z
     .string()
     .describe(
       "A photo to extract text from, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
-export type ExtractTextFromImageInput = z.infer<typeof ExtractTextFromImageInputSchema>;
+export type ExtractTextFromImageInput = z.infer<
+  typeof ExtractTextFromImageInputSchema
+>;
 
 const ExtractTextFromImageOutputSchema = z.object({
   extractedText: z
     .string()
     .describe('The extracted text from the image, if any.'),
 });
-export type ExtractTextFromImageOutput = z.infer<typeof ExtractTextFromImageOutputSchema>;
+export type ExtractTextFromImageOutput = z.infer<
+  typeof ExtractTextFromImageOutputSchema
+>;
 
 export async function extractTextFromImage(
   input: ExtractTextFromImageInput
 ): Promise<ExtractTextFromImageOutput> {
+  ai.configure({
+    plugins: [googleAI({apiKey: input.apiKey})],
+  });
   return extractTextFromImageFlow(input);
 }
 

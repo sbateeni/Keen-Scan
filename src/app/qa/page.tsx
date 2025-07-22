@@ -1,11 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { Home, Bot, User, Loader2, Send, Sparkles, Pilcrow, List, FileText, Binary, ListChecks, PlusCircle, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import {answerQuestion} from '@/ai/flows/answer-question';
+import type {AnswerQuestionInput} from '@/ai/flows/answer-question';
+import {Button} from '@/components/ui/button';
+import {Card, CardContent} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -14,26 +12,48 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { answerQuestion } from '@/ai/flows/answer-question';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { AnswerQuestionInput } from '@/ai/flows/answer-question';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { db, type SavedText } from '@/lib/db';
+} from '@/components/ui/select';
+import {ScrollArea} from '@/components/ui/scroll-area';
+import {Textarea} from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {ToggleGroup, ToggleGroupItem} from '@/components/ui/toggle-group';
+import {useToast} from '@/hooks/use-toast';
+import {db, type SavedText} from '@/lib/db';
+import {getApiKey} from '@/lib/keys';
+import {useLiveQuery} from 'dexie-react-hooks';
+import {
+  Binary,
+  Bot,
+  FileText,
+  Home,
+  List,
+  ListChecks,
+  Loader2,
+  Pilcrow,
+  PlusCircle,
+  Send,
+  Sparkles,
+  Trash2,
+  User,
+} from 'lucide-react';
+import Link from 'next/link';
+import {useEffect, useRef, useState} from 'react';
 
 interface Message {
-    role: 'user' | 'bot';
-    content: string;
+  role: 'user' | 'bot';
+  content: string;
 }
 
 const QAPage = () => {
@@ -41,15 +61,18 @@ const QAPage = () => {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [answerType, setAnswerType] = useState<AnswerQuestionInput['answerType']>('default');
+  const [
+    answerType,
+    setAnswerType,
+  ] = useState<AnswerQuestionInput['answerType']>('default');
   const [isAddTextDialogOpen, setIsAddTextDialogOpen] = useState(false);
   const [newTextContent, setNewTextContent] = useState('');
 
-  const { toast } = useToast();
+  const {toast} = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const savedTexts = useLiveQuery(
-    () => db.savedTexts.orderBy('date').reverse().toArray()
+  const savedTexts = useLiveQuery(() =>
+    db.savedTexts.orderBy('date').reverse().toArray()
   );
 
   useEffect(() => {
@@ -61,10 +84,12 @@ const QAPage = () => {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-        }
+      const viewport = scrollAreaRef.current.querySelector(
+        'div[data-radix-scroll-area-viewport]'
+      );
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -72,26 +97,45 @@ const QAPage = () => {
     e.preventDefault();
     if (!question.trim() || !selectedText || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: question };
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      toast({
+        variant: 'destructive',
+        title: 'لم يتم العثور على مفتاح API',
+        description:
+          'الرجاء إضافة مفتاح Google AI API الخاص بك في الصفحة الرئيسية.',
+      });
+      return;
+    }
+
+    const userMessage: Message = {role: 'user', content: question};
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setQuestion('');
     setIsLoading(true);
 
     try {
       const result = await answerQuestion({
+        apiKey,
         question: question,
         context: selectedText.text,
         answerType: answerType,
       });
 
-      setMessages(prevMessages => [...prevMessages, { role: 'bot', content: result.answer }]);
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {role: 'bot', content: result.answer},
+      ]);
     } catch (error) {
       console.error(error);
-      const errorMessage = "لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.";
-      setMessages(prevMessages => [...prevMessages, { role: 'bot', content: errorMessage }]);
+      const errorMessage =
+        'لم نتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى.';
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {role: 'bot', content: errorMessage},
+      ]);
       toast({
-        variant: "destructive",
-        title: "حدث خطأ",
+        variant: 'destructive',
+        title: 'حدث خطأ',
         description: errorMessage,
       });
     } finally {
@@ -102,12 +146,12 @@ const QAPage = () => {
   const handleSelectChange = (id: string) => {
     const textId = parseInt(id, 10);
     const text = savedTexts?.find(t => t.id === textId);
-    if(text) {
-        setSelectedText(text);
-        setMessages([]); 
+    if (text) {
+      setSelectedText(text);
+      setMessages([]);
     }
-  }
-  
+  };
+
   const handleSaveNewText = async () => {
     if (!newTextContent.trim()) {
       toast({
@@ -119,69 +163,77 @@ const QAPage = () => {
     }
 
     try {
-        const newId = await db.savedTexts.add({
-            text: newTextContent,
-            date: new Date(),
-        });
-        
-        const newSavedText = await db.savedTexts.get(newId);
-        if (newSavedText) {
-            setSelectedText(newSavedText); 
-            setMessages([]);
-        }
+      const newId = await db.savedTexts.add({
+        text: newTextContent,
+        date: new Date(),
+      });
 
-        toast({
-          title: 'تم حفظ النص بنجاح',
-          description: 'يمكنك الآن طرح أسئلة حوله.',
-        });
+      const newSavedText = await db.savedTexts.get(newId);
+      if (newSavedText) {
+        setSelectedText(newSavedText);
+        setMessages([]);
+      }
 
-        setNewTextContent('');
-        setIsAddTextDialogOpen(false);
-    } catch(error) {
-        console.error("Failed to save new text", error);
-         toast({
-            variant: 'destructive',
-            title: 'فشل الحفظ',
-            description: 'لم نتمكن من حفظ النص الجديد.',
-        });
+      toast({
+        title: 'تم حفظ النص بنجاح',
+        description: 'يمكنك الآن طرح أسئلة حوله.',
+      });
+
+      setNewTextContent('');
+      setIsAddTextDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save new text', error);
+      toast({
+        variant: 'destructive',
+        title: 'فشل الحفظ',
+        description: 'لم نتمكن من حفظ النص الجديد.',
+      });
     }
   };
 
   const handleDeleteText = (idToDelete: number, event: React.MouseEvent) => {
     event.stopPropagation();
-    event.preventDefault(); 
-    
-    db.savedTexts.delete(idToDelete).then(() => {
+    event.preventDefault();
+
+    db.savedTexts
+      .delete(idToDelete)
+      .then(() => {
         if (selectedText?.id === idToDelete) {
-            const remainingTexts = savedTexts?.filter(t => t.id !== idToDelete);
-            setSelectedText(remainingTexts && remainingTexts.length > 0 ? remainingTexts[0] : null);
-            setMessages([]);
+          const remainingTexts = savedTexts?.filter(t => t.id !== idToDelete);
+          setSelectedText(
+            remainingTexts && remainingTexts.length > 0 ? remainingTexts[0] : null
+          );
+          setMessages([]);
         }
-        
+
         toast({
-            title: "تم الحذف",
-            description: "تم حذف النص المحفوظ بنجاح.",
-        })
-    }).catch(err => {
+          title: 'تم الحذف',
+          description: 'تم حذف النص المحفوظ بنجاح.',
+        });
+      })
+      .catch(err => {
         console.error(err);
         toast({
-            variant: "destructive",
-            title: "فشل الحذف",
+          variant: 'destructive',
+          title: 'فشل الحذف',
         });
-    });
+      });
   };
-
 
   return (
     <TooltipProvider>
       <div className="flex min-h-screen flex-col bg-background p-4 sm:p-8 md:p-12">
         <div className="w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
           <header className="flex justify-between items-center mb-4 md:mb-6 border-b pb-4">
-            <div className='flex items-center gap-4'>
+            <div className="flex items-center gap-4">
               <Sparkles className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">اسأل المستند</h1>
-                <p className="text-muted-foreground text-sm">تحدث مع ملاحظاتك المحفوظة للحصول على إجابات فورية.</p>
+                <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
+                  اسأل المستند
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  تحدث مع ملاحظاتك المحفوظة للحصول على إجابات فورية.
+                </p>
               </div>
             </div>
             <Button asChild variant="outline">
@@ -193,219 +245,315 @@ const QAPage = () => {
           </header>
 
           {savedTexts && savedTexts.length > 0 ? (
-              <div className="flex-grow flex flex-col gap-4 overflow-hidden">
-                  <div className="flex flex-col sm:flex-row gap-4 items-end">
-                      <div className="flex-grow w-full">
-                          <label className="text-sm font-medium mb-2 block" htmlFor="context-select">اختر النص الذي تريد طرح أسئلة عنه:</label>
-                          <Select onValueChange={handleSelectChange} value={selectedText?.id.toString() || ''}>
-                              <SelectTrigger id="context-select" className="w-full">
-                                  <SelectValue placeholder="اختر نصًا محفوظًا..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  {savedTexts.map(text => (
-                                      <SelectItem key={text.id} value={text.id.toString()}>
-                                        <div className="flex justify-between items-center w-full">
-                                          <span>نص محفوظ في {new Date(text.date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onMouseDown={(e) => e.preventDefault()} onClick={(e) => handleDeleteText(text.id, e)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                      </div>
-                      <Dialog open={isAddTextDialogOpen} onOpenChange={setIsAddTextDialogOpen}>
-                          <DialogTrigger asChild>
-                              <Button variant="outline" className="w-full sm:w-auto">
-                                <PlusCircle className="ml-2 h-4 w-4"/>
-                                إضافة نص جاهز
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]">
-                              <DialogHeader>
-                                  <DialogTitle>إضافة نص جديد</DialogTitle>
-                                  <DialogDescription>
-                                    ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قاعدة البيانات.
-                                  </DialogDescription>
-                              </DialogHeader>
-                              <div className="py-4">
-                                  <Textarea 
-                                      placeholder="ألصق النص هنا..."
-                                      className="min-h-[200px]"
-                                      value={newTextContent}
-                                      onChange={(e) => setNewTextContent(e.target.value)}
-                                      dir="rtl"
-                                  />
-                              </div>
-                              <DialogFooter>
-                                  <Button onClick={handleSaveNewText}>حفظ النص</Button>
-                              </DialogFooter>
-                          </DialogContent>
-                      </Dialog>
-                  </div>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <form onSubmit={handleQuestionSubmit} className="flex flex-col w-full items-start gap-2">
-                          <Textarea
-                            value={question}
-                            onChange={(e) => setQuestion(e.target.value)}
-                            placeholder={selectedText ? "اكتب سؤالك هنا..." : "الرجاء تحديد نص للاستعلام عنه"}
-                            className="flex-grow resize-none w-full"
-                            rows={2}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleQuestionSubmit(e as any);
-                                }
-                            }}
-                            disabled={!selectedText || isLoading}
-                          />
-                          <div className="flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap w-full">
-                            <ToggleGroup 
-                                type="single" 
-                                value={answerType} 
-                                onValueChange={(value) => {
-                                    if (value) setAnswerType(value as AnswerQuestionInput['answerType']);
-                                }}
-                                className="justify-start flex-wrap"
-                                aria-label="نوع السؤال"
-                                disabled={!selectedText}
+            <div className="flex-grow flex flex-col gap-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-grow w-full">
+                  <label
+                    className="text-sm font-medium mb-2 block"
+                    htmlFor="context-select"
+                  >
+                    اختر النص الذي تريد طرح أسئلة عنه:
+                  </label>
+                  <Select
+                    onValueChange={handleSelectChange}
+                    value={selectedText?.id.toString() || ''}
+                  >
+                    <SelectTrigger id="context-select" className="w-full">
+                      <SelectValue placeholder="اختر نصًا محفوظًا..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedTexts.map(text => (
+                        <SelectItem key={text.id} value={text.id.toString()}>
+                          <div className="flex justify-between items-center w-full">
+                            <span>
+                              نص محفوظ في{' '}
+                              {new Date(text.date).toLocaleString('ar-EG', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={e => handleDeleteText(text.id, e)}
                             >
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
-                                        <Pilcrow className="h-4 w-4" />
-                                        <span className="mr-2 hidden sm:inline">سؤال عام</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>اطرح سؤالاً عامًا واحصل على إجابة مفصلة</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem value="summary" aria-label="ملخص">
-                                        <FileText className="h-4 w-4" />
-                                        <span className="mr-2 hidden sm:inline">تلخيص</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>اطلب تلخيص الإجابة في فقرة موجزة</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem value="bullet_points" aria-label="نقاط">
-                                        <List className="h-4 w-4" />
-                                        <span className="mr-2 hidden sm:inline">نقاط</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>اطلب عرض الإجابة على شكل نقاط</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                 <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem value="true_false" aria-label="صح/خطأ">
-                                        <Binary className="h-4 w-4" />
-                                        <span className="mr-2 hidden sm:inline">صح/خطأ</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>أدخل عبارة لتقييمها كصحيحة أو خاطئة</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                 <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <ToggleGroupItem value="multiple_choice" aria-label="اختيار من متعدد">
-                                        <ListChecks className="h-4 w-4" />
-                                        <span className="mr-2 hidden sm:inline">اختيار من متعدد</span>
-                                    </ToggleGroupItem>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>أدخل سؤال اختيار من متعدد لتحديد الإجابة الصحيحة</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                            </ToggleGroup>
-                            <Button type="submit" disabled={isLoading || !question.trim() || !selectedText}>
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                <span className="mr-2">إرسال</span>
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
-                      </form>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="flex-grow flex flex-col overflow-hidden">
-                      <CardContent ref={scrollAreaRef} className="flex-grow p-4 overflow-y-auto h-full">
-                          <ScrollArea className="h-full">
-                               {messages.length === 0 ? (
-                                  <div className="flex h-full items-center justify-center text-center text-muted-foreground">
-                                      {selectedText ? 
-                                        <p>ابدأ بطرح سؤال حول النص المحدد.</p> :
-                                        <p>اختر نصًا أو أضف نصًا جديدًا للبدأ.</p>
-                                      }
-                                  </div>
-                              ) : (
-                                  <div className="space-y-4">
-                                      {messages.map((message, index) => (
-                                          <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                              {message.role === 'bot' && <div className="p-2 rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>}
-                                              <div className={`rounded-lg p-3 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`} dir="rtl">
-                                                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                                              </div>
-                                              {message.role === 'user' && <div className="p-2 rounded-full bg-muted/80"><User className="h-5 w-5 text-foreground" /></div>}
-                                          </div>
-                                      ))}
-                                      {isLoading && (
-                                          <div className="flex items-start gap-3">
-                                              <div className="p-2 rounded-full bg-primary/10"><Bot className="h-5 w-5 text-primary" /></div>
-                                              <div className="rounded-lg p-3 bg-muted flex items-center">
-                                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                              </div>
-                                          </div>
-                                      )}
-                                  </div>
-                              )}
-                          </ScrollArea>
-                      </CardContent>
-                  </Card>
-              </div>
-          ) : (
-            <div className="text-center py-16 border-2 border-dashed border-muted-foreground/30 rounded-lg">
-              <p className="text-lg text-muted-foreground">لا توجد نصوص محفوظة للبدء.</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                  انتقل إلى <Link href="/" className="text-primary underline">الصفحة الرئيسية</Link> لاستخراج النصوص وحفظها أولاً، أو قم بإضافة نص جديد.
-              </p>
-              <Dialog open={isAddTextDialogOpen} onOpenChange={setIsAddTextDialogOpen}>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Dialog
+                  open={isAddTextDialogOpen}
+                  onOpenChange={setIsAddTextDialogOpen}
+                >
                   <DialogTrigger asChild>
-                      <Button className="mt-4">
-                          <PlusCircle className="ml-2 h-4 w-4"/>
-                          إضافة نص جاهز
-                      </Button>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <PlusCircle className="ml-2 h-4 w-4" />
+                      إضافة نص جاهز
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                          <DialogTitle>إضافة نص جديد</DialogTitle>
-                          <DialogDescription>
-                              ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا في قاعدة البيانات.
-                          </DialogDescription>
-                      </DialogHeader>
-                      <div className="py-4">
-                          <Textarea 
-                              placeholder="ألصق النص هنا..."
-                              className="min-h-[200px]"
-                              value={newTextContent}
-                              onChange={(e) => setNewTextContent(e.target.value)}
-                              dir="rtl"
-                          />
-                      </div>
-                      <DialogFooter>
-                          <Button onClick={handleSaveNewText}>حفظ النص</Button>
-                      </DialogFooter>
+                    <DialogHeader>
+                      <DialogTitle>إضافة نص جديد</DialogTitle>
+                      <DialogDescription>
+                        ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه
+                        تلقائيًا في قاعدة البيانات.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Textarea
+                        placeholder="ألصق النص هنا..."
+                        className="min-h-[200px]"
+                        value={newTextContent}
+                        onChange={e => setNewTextContent(e.target.value)}
+                        dir="rtl"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleSaveNewText}>حفظ النص</Button>
+                    </DialogFooter>
                   </DialogContent>
+                </Dialog>
+              </div>
+
+              <Card>
+                <CardContent className="p-4">
+                  <form
+                    onSubmit={handleQuestionSubmit}
+                    className="flex flex-col w-full items-start gap-2"
+                  >
+                    <Textarea
+                      value={question}
+                      onChange={e => setQuestion(e.target.value)}
+                      placeholder={
+                        selectedText
+                          ? 'اكتب سؤالك هنا...'
+                          : 'الرجاء تحديد نص للاستعلام عنه'
+                      }
+                      className="flex-grow resize-none w-full"
+                      rows={2}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleQuestionSubmit(e as any);
+                        }
+                      }}
+                      disabled={!selectedText || isLoading}
+                    />
+                    <div className="flex flex-col sm:flex-row gap-2 items-center justify-between flex-wrap w-full">
+                      <ToggleGroup
+                        type="single"
+                        value={answerType}
+                        onValueChange={value => {
+                          if (value)
+                            setAnswerType(
+                              value as AnswerQuestionInput['answerType']
+                            );
+                        }}
+                        className="justify-start flex-wrap"
+                        aria-label="نوع السؤال"
+                        disabled={!selectedText}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem value="default" aria-label="إجابة مفصلة">
+                              <Pilcrow className="h-4 w-4" />
+                              <span className="mr-2 hidden sm:inline">
+                                سؤال عام
+                              </span>
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>اطرح سؤالاً عامًا واحصل على إجابة مفصلة</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem value="summary" aria-label="ملخص">
+                              <FileText className="h-4 w-4" />
+                              <span className="mr-2 hidden sm:inline">تلخيص</span>
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>اطلب تلخيص الإجابة في فقرة موجزة</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                              value="bullet_points"
+                              aria-label="نقاط"
+                            >
+                              <List className="h-4 w-4" />
+                              <span className="mr-2 hidden sm:inline">نقاط</span>
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>اطلب عرض الإجابة على شكل نقاط</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                              value="true_false"
+                              aria-label="صح/خطأ"
+                            >
+                              <Binary className="h-4 w-4" />
+                              <span className="mr-2 hidden sm:inline">صح/خطأ</span>
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>أدخل عبارة لتقييمها كصحيحة أو خاطئة</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                              value="multiple_choice"
+                              aria-label="اختيار من متعدد"
+                            >
+                              <ListChecks className="h-4 w-4" />
+                              <span className="mr-2 hidden sm:inline">
+                                اختيار من متعدد
+                              </span>
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              أدخل سؤال اختيار من متعدد لتحديد الإجابة الصحيحة
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </ToggleGroup>
+                      <Button
+                        type="submit"
+                        disabled={
+                          isLoading || !question.trim() || !selectedText
+                        }
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        <span className="mr-2">إرسال</span>
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card className="flex-grow flex flex-col overflow-hidden">
+                <CardContent
+                  ref={scrollAreaRef}
+                  className="flex-grow p-4 overflow-y-auto h-full"
+                >
+                  <ScrollArea className="h-full">
+                    {messages.length === 0 ? (
+                      <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+                        {selectedText ? (
+                          <p>ابدأ بطرح سؤال حول النص المحدد.</p>
+                        ) : (
+                          <p>اختر نصًا أو أضف نصًا جديدًا للبدأ.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((message, index) => (
+                          <div
+                            key={index}
+                            className={`flex items-start gap-3 ${
+                              message.role === 'user' ? 'justify-end' : ''
+                            }`}
+                          >
+                            {message.role === 'bot' && (
+                              <div className="p-2 rounded-full bg-primary/10">
+                                <Bot className="h-5 w-5 text-primary" />
+                              </div>
+                            )}
+                            <div
+                              className={`rounded-lg p-3 max-w-[80%] ${
+                                message.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              }`}
+                              dir="rtl"
+                            >
+                              <p className="text-sm whitespace-pre-wrap">
+                                {message.content}
+                              </p>
+                            </div>
+                            {message.role === 'user' && (
+                              <div className="p-2 rounded-full bg-muted/80">
+                                <User className="h-5 w-5 text-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {isLoading && (
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-full bg-primary/10">
+                              <Bot className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="rounded-lg p-3 bg-muted flex items-center">
+                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="text-center py-16 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+              <p className="text-lg text-muted-foreground">
+                لا توجد نصوص محفوظة للبدء.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                انتقل إلى{' '}
+                <Link href="/" className="text-primary underline">
+                  الصفحة الرئيسية
+                </Link>{' '}
+                لاستخراج النصوص وحفظها أولاً، أو قم بإضافة نص جديد.
+              </p>
+              <Dialog
+                open={isAddTextDialogOpen}
+                onOpenChange={setIsAddTextDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button className="mt-4">
+                    <PlusCircle className="ml-2 h-4 w-4" />
+                    إضافة نص جاهز
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>إضافة نص جديد</DialogTitle>
+                    <DialogDescription>
+                      ألصق النص الذي تريد الاستعلام عنه هنا. سيتم حفظه تلقائيًا
+                      في قاعدة البيانات.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Textarea
+                      placeholder="ألصق النص هنا..."
+                      className="min-h-[200px]"
+                      value={newTextContent}
+                      onChange={e => setNewTextContent(e.target.value)}
+                      dir="rtl"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleSaveNewText}>حفظ النص</Button>
+                  </DialogFooter>
+                </DialogContent>
               </Dialog>
             </div>
           )}
