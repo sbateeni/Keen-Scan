@@ -1,6 +1,7 @@
 'use client';
 
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
+import { proofreadText } from '@/ai/flows/proofread-text';
 import { db, type Extraction } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   CopyPlus,
   FilePlus2,
   Loader2,
+  Sparkles,
   Trash2,
   Upload,
   XCircle,
@@ -41,6 +43,7 @@ interface ExtractionProgress {
 export default function OcrTool() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isProofreading, setIsProofreading] = useState(false);
   const [extractionProgress, setExtractionProgress] =
     useState<ExtractionProgress | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -114,8 +117,7 @@ export default function OcrTool() {
       toast({
         variant: 'destructive',
         title: 'فشل الاستخراج',
-        description:
-          'حدث خطأ غير متوقع. يرجى التأكد من صحة مفتاح API والمحاولة مرة أخرى.',
+        description: 'ما المشكلة؟',
       });
       return '';
     } finally {
@@ -161,6 +163,39 @@ export default function OcrTool() {
     }
   };
 
+  const handleProofread = async () => {
+    if (!currentText || !activeExtractionId) {
+      toast({
+        variant: 'destructive',
+        title: 'لا يوجد نص للتدقيق',
+        description: 'يرجى تحديد جلسة أو استخراج نص أولاً.',
+      });
+      return;
+    }
+
+    setIsProofreading(true);
+    try {
+      const result = await proofreadText({ text: currentText });
+      const proofread = result.proofreadText;
+      setCurrentText(proofread);
+      await db.extractions.update(activeExtractionId, {
+        combinedText: proofread,
+      });
+      toast({
+        title: 'تم التدقيق بنجاح',
+        description: 'تم تحسين النص وتصحيح الأخطاء.',
+      });
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'فشل التدقيق',
+        description: 'حدث خطأ أثناء محاولة تدقيق النص.',
+      });
+    } finally {
+      setIsProofreading(false);
+    }
+  };
+
   const handleDeleteExtraction = async () => {
     if (!activeExtractionId) return;
     await db.extractions.delete(activeExtractionId);
@@ -201,6 +236,8 @@ export default function OcrTool() {
     }
   };
 
+  const isBusy = isExtracting || isProofreading;
+
   return (
     <Card className="w-full shadow-lg overflow-hidden border-border/50">
       <CardContent className="p-6 md:p-8">
@@ -233,7 +270,7 @@ export default function OcrTool() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     onClick={handleNewExtraction}
-                    disabled={isExtracting}
+                    disabled={isBusy}
                     className="flex-1"
                   >
                     {isExtracting ? (
@@ -245,7 +282,7 @@ export default function OcrTool() {
                   </Button>
                   <Button
                     onClick={handleContinueExtraction}
-                    disabled={isExtracting || !activeExtractionId}
+                    disabled={isBusy || !activeExtractionId}
                     className="flex-1"
                     variant="secondary"
                   >
@@ -337,7 +374,7 @@ export default function OcrTool() {
                     variant="destructive"
                     size="icon"
                     onClick={handleDeleteExtraction}
-                    disabled={!activeExtractionId || isExtracting}
+                    disabled={!activeExtractionId || isBusy}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -346,16 +383,31 @@ export default function OcrTool() {
             </div>
 
             <div className="flex flex-col gap-2 h-full">
-               <div className="flex justify-end items-center min-h-[40px]">
-                {currentText && !isExtracting && (
-                  <Button variant="ghost" size="sm" onClick={handleCopy}>
-                    {isCopied ? (
-                      <Check className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Clipboard className="h-4 w-4" />
-                    )}
-                    <span className="mr-2">{isCopied ? 'تم النسخ' : 'نسخ'}</span>
-                  </Button>
+               <div className="flex justify-end items-center min-h-[40px] gap-2">
+                {currentText && !isBusy && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleProofread}
+                      disabled={isProofreading}
+                    >
+                      {isProofreading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      <span className="mr-2">تدقيق وتحسين</span>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleCopy}>
+                      {isCopied ? (
+                        <Check className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Clipboard className="h-4 w-4" />
+                      )}
+                      <span className="mr-2">{isCopied ? 'تم النسخ' : 'نسخ'}</span>
+                    </Button>
+                  </>
                 )}
               </div>
 
@@ -371,10 +423,10 @@ export default function OcrTool() {
                   <Textarea
                     placeholder="سيظهر النص المستخرج هنا بعد اختيار أو بدء جلسة جديدة."
                     value={currentText}
-                    readOnly={isExtracting}
+                    readOnly={isBusy}
                     onChange={(e) => setCurrentText(e.target.value)}
                     onBlur={() => {
-                      if (activeExtractionId) {
+                      if (activeExtractionId && !isProofreading) {
                         db.extractions.update(activeExtractionId, { combinedText: currentText });
                       }
                     }}
