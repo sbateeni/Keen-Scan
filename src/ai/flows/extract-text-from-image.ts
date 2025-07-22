@@ -60,7 +60,7 @@ const extractTextFromImageFlow = ai.defineFlow(
     outputSchema: ExtractTextFromImageOutputSchema,
   },
   async input => {
-    const model = googleAI({apiKey: input.apiKey});
+    const model = googleAI({apiKey: input.apiKey || process.env.GEMINI_API_KEY});
     const {output} = await extractTextFromImagePrompt(input, {model});
     return output!;
   }

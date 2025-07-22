@@ -65,7 +65,12 @@ export default function OcrTool() {
   const handleExtractAll = async () => {
     if (images.length === 0) return;
 
-    const apiKey = getApiKey();
+    let apiKey = getApiKey();
+    if (!apiKey) {
+      // Use the server's key if available, otherwise prompt the user.
+      apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || null;
+    }
+    
     if (!apiKey) {
       toast({
         variant: 'destructive',
