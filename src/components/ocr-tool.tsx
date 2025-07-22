@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { db, type Extraction } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -182,7 +188,7 @@ export default function OcrTool() {
       setIsProofreading(false);
     }
   };
-  
+
   const handleCorrectSpelling = async () => {
     if (!extractedText) return;
     setIsCorrectingSpelling(true);
@@ -397,44 +403,61 @@ export default function OcrTool() {
             <div className="flex flex-col gap-2 h-full">
               <div className="flex justify-end items-center min-h-[40px] gap-2 flex-wrap">
                 {extractedText && !isBusy && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCorrectSpelling}
-                      disabled={isCorrectingSpelling}
-                    >
-                      {isCorrectingSpelling ? (
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <SpellCheck className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">تصحيح إملائي</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleProofreadText}
-                      disabled={isProofreading}
-                    >
-                      {isProofreading ? (
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">تدقيق وتحسين</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleCopy}>
-                      {isCopied ? (
-                        <Check className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Clipboard className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">
-                        {isCopied ? 'تم النسخ' : 'نسخ'}
-                      </span>
-                    </Button>
-                  </>
+                  <TooltipProvider>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCorrectSpelling}
+                            disabled={isCorrectingSpelling}
+                          >
+                            {isCorrectingSpelling ? (
+                              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <SpellCheck className="h-4 w-4" />
+                            )}
+                            <span className="mr-2">تصحيح إملائي</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>تصحيح الأخطاء الإملائية وتنسيق الفقرات</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleProofreadText}
+                            disabled={isProofreading}
+                          >
+                            {isProofreading ? (
+                              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                            <span className="mr-2">تدقيق وتحسين</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>تحسين الصياغة والأسلوب وتصحيح كل الأخطاء</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Button variant="ghost" size="sm" onClick={handleCopy}>
+                        {isCopied ? (
+                          <Check className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Clipboard className="h-4 w-4" />
+                        )}
+                        <span className="mr-2">
+                          {isCopied ? 'تم النسخ' : 'نسخ'}
+                        </span>
+                      </Button>
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
 
