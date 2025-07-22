@@ -20,13 +20,13 @@ export default function Home() {
             <Button asChild variant="outline">
               <Link href="/saved">
                 <NotebookText />
-                النصوص المحفوظة
+                <span>النصوص المحفوظة</span>
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/qa">
                 <MessageCircleQuestion />
-                اسأل المستند
+                <span>اسأل المستند</span>
               </Link>
             </Button>
             <ApiKeyManager />

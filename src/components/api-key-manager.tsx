@@ -49,7 +49,7 @@ export default function ApiKeyManager() {
       <DialogTrigger asChild>
         <Button variant="outline">
           <KeyRound />
-          مفتاح API
+          <span>مفتاح API</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
