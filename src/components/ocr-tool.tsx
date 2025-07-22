@@ -1,21 +1,33 @@
 'use client';
 
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
+import { proofreadText } from '@/ai/flows/proofread-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { db, type Extraction } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Check,
   Clipboard,
+  FilePlus,
   Loader2,
+  Sparkles,
   Trash2,
   Upload,
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 
 interface ImageData {
   url: string;
@@ -30,14 +42,32 @@ interface ExtractionProgress {
 export default function OcrTool() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isProofreading, setIsProofreading] = useState(false);
   const [extractionProgress, setExtractionProgress] =
     useState<ExtractionProgress | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState('');
+  const [activeExtractionId, setActiveExtractionId] = useState<number | null>(
+    null
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const extractions = useLiveQuery(() => db.extractions.toArray(), []);
+
+  useEffect(() => {
+    if (activeExtractionId) {
+      const activeExtraction = extractions?.find(
+        (e) => e.id === activeExtractionId
+      );
+      if (activeExtraction) {
+        setExtractedText(activeExtraction.text);
+      }
+    } else {
+      setExtractedText('');
+    }
+  }, [activeExtractionId, extractions]);
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -58,13 +88,14 @@ export default function OcrTool() {
       reader.onerror = (error) => reject(error);
     });
 
-  const handleExtractText = async () => {
+  const handleExtraction = async (mode: 'new' | 'continue') => {
     if (images.length === 0) return;
     setIsExtracting(true);
     setError(null);
     setExtractionProgress({ current: 0, total: images.length });
 
     let allTexts: string[] = [];
+    let newExtractionId: number | null = null;
 
     try {
       for (let i = 0; i < images.length; i++) {
@@ -74,7 +105,30 @@ export default function OcrTool() {
         const result = await extractTextFromImage({ photoDataUri });
         allTexts.push(result.extractedText);
       }
-      setExtractedText(allTexts.join('\n\n'));
+      const newText = allTexts.join('\n\n');
+
+      if (mode === 'new') {
+        const id = await db.extractions.add({
+          title: `استخراج ${new Date().toLocaleString()}`,
+          text: newText,
+          createdAt: new Date(),
+        });
+        setExtractedText(newText);
+        setActiveExtractionId(id);
+        newExtractionId = id;
+      } else if (mode === 'continue' && activeExtractionId) {
+        const existingExtraction = await db.extractions.get(activeExtractionId);
+        if (existingExtraction) {
+          const updatedText = existingExtraction.text + '\n\n' + newText;
+          await db.extractions.update(activeExtractionId, { text: updatedText });
+          setExtractedText(updatedText);
+        }
+      }
+
+      toast({
+        title: 'نجح الاستخراج',
+        description: 'تم استخراج النص وحفظه بنجاح.',
+      });
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -82,12 +136,43 @@ export default function OcrTool() {
       toast({
         variant: 'destructive',
         title: 'فشل الاستخراج',
-        description: 'حدث خطأ ما أثناء استخراج النص.',
+        description: 'ما المشكلة؟',
       });
     } finally {
       setIsExtracting(false);
       setExtractionProgress(null);
-      setImages([]); // Clear images after extraction
+      setImages([]);
+    }
+  };
+
+  const handleProofreadText = async () => {
+    if (!extractedText) return;
+    setIsProofreading(true);
+    setError(null);
+
+    try {
+      const { proofreadText: improvedText } = await proofreadText({
+        text: extractedText,
+      });
+      setExtractedText(improvedText);
+      if (activeExtractionId) {
+        await db.extractions.update(activeExtractionId, { text: improvedText });
+      }
+      toast({
+        title: 'تم التدقيق بنجاح',
+        description: 'تم تحسين النص وحفظ التغييرات.',
+      });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'فشل التدقيق',
+        description: 'حدث خطأ ما أثناء تدقيق النص.',
+      });
+    } finally {
+      setIsProofreading(false);
     }
   };
 
@@ -97,7 +182,7 @@ export default function OcrTool() {
     setIsCopied(true);
     toast({
       title: 'تم النسخ إلى الحافظة!',
-      description: 'تم نسخ النص المستخرج بنجاح.',
+      description: 'تم نسخ النص المحدد بنجاح.',
     });
     setTimeout(() => {
       setIsCopied(false);
@@ -106,22 +191,22 @@ export default function OcrTool() {
 
   const removeImage = (imageUrl: string) => {
     setImages((prev) => prev.filter((img) => img.url !== imageUrl));
-    URL.revokeObjectURL(imageUrl); // Clean up memory
+    URL.revokeObjectURL(imageUrl);
   };
 
-  const clearAll = () => {
-    images.forEach((img) => URL.revokeObjectURL(img.url));
-    setImages([]);
-    setError(null);
-    setIsExtracting(false);
-    setExtractionProgress(null);
+  const handleDeleteExtraction = async () => {
+    if (!activeExtractionId) return;
+    await db.extractions.delete(activeExtractionId);
+    setActiveExtractionId(null);
     setExtractedText('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    toast({
+      variant: 'destructive',
+      title: 'تم الحذف',
+      description: 'تم حذف جلسة الاستخراج المحددة.',
+    });
   };
 
-  const isBusy = isExtracting;
+  const isBusy = isExtracting || isProofreading;
 
   return (
     <Card className="w-full shadow-lg overflow-hidden border-border/50">
@@ -151,14 +236,31 @@ export default function OcrTool() {
             </div>
 
             {images.length > 0 && (
-              <div className="flex flex-col gap-2 w-full">
-                <Button onClick={handleExtractText} disabled={isBusy}>
-                  {isExtracting ? (
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <Button
+                  onClick={() => handleExtraction('new')}
+                  disabled={isBusy}
+                  className="flex-1"
+                >
+                  {isExtracting && !activeExtractionId ? (
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FilePlus className="ml-2 h-4 w-4" />
+                  )}
+                  بدء استخراج جديد
+                </Button>
+                <Button
+                  onClick={() => handleExtraction('continue')}
+                  disabled={isBusy || !activeExtractionId}
+                  className="flex-1"
+                  variant="secondary"
+                >
+                  {isExtracting && activeExtractionId ? (
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Upload className="ml-2 h-4 w-4" />
                   )}
-                  استخراج النص ({images.length})
+                  استكمال الاستخراج ({images.length})
                 </Button>
               </div>
             )}
@@ -211,14 +313,58 @@ export default function OcrTool() {
 
           {/* Right Column: Results */}
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row gap-2 justify-between items-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-between items-start">
               <h3 className="font-semibold text-lg">النص المستخرج</h3>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select
+                  value={activeExtractionId?.toString() ?? ''}
+                  onValueChange={(value) =>
+                    setActiveExtractionId(value ? parseInt(value) : null)
+                  }
+                  dir="rtl"
+                >
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="اختر جلسة..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {extractions?.map((ext) => (
+                      <SelectItem key={ext.id} value={ext.id!.toString()}>
+                        {ext.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {activeExtractionId && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={handleDeleteExtraction}
+                    disabled={isBusy}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-2 h-full">
               <div className="flex justify-end items-center min-h-[40px] gap-2">
                 {extractedText && !isBusy && (
                   <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleProofreadText}
+                      disabled={isProofreading}
+                    >
+                      {isProofreading ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      <span className="mr-2">تدقيق وتحسين</span>
+                    </Button>
+
                     <Button variant="ghost" size="sm" onClick={handleCopy}>
                       {isCopied ? (
                         <Check className="h-4 w-4 text-primary" />
@@ -229,20 +375,12 @@ export default function OcrTool() {
                         {isCopied ? 'تم النسخ' : 'نسخ'}
                       </span>
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={clearAll}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="mr-2">مسح الكل</span>
-                    </Button>
                   </>
                 )}
               </div>
 
               <div className="relative w-full h-full min-h-[300px]">
-                {error ? (
+                {error && !isBusy ? (
                   <div className="flex h-full items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 p-4">
                     <div className="text-center text-destructive">
                       <XCircle className="h-8 w-8 mx-auto mb-2" />
@@ -254,7 +392,14 @@ export default function OcrTool() {
                     placeholder="سيظهر النص المستخرج هنا."
                     value={extractedText}
                     readOnly={isBusy}
-                    onChange={(e) => setExtractedText(e.target.value)}
+                    onChange={(e) => {
+                      setExtractedText(e.target.value);
+                      if (activeExtractionId) {
+                        db.extractions.update(activeExtractionId, {
+                          text: e.target.value,
+                        });
+                      }
+                    }}
                     className="w-full h-full resize-y text-base min-h-[300px] leading-relaxed"
                     dir="rtl"
                   />
