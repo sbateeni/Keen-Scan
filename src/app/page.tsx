@@ -18,7 +18,7 @@ import {
 import {KeyRound, Save} from 'lucide-react';
 import OcrTool from '@/components/ocr-tool';
 
-export default function Home() {
+const Home = () => {
   const [apiKey, setApiKeyValue] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -102,3 +102,5 @@ export default function Home() {
     </main>
   );
 }
+
+export default Home;
