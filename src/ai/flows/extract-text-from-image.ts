@@ -14,7 +14,7 @@ const ExtractTextFromImageInputSchema = z.object({
   photoDataUri: z
     .string()
     .describe(
-      "A photo to extract text from, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A photo or document to extract text from, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type ExtractTextFromImageInput = z.infer<
@@ -24,7 +24,7 @@ export type ExtractTextFromImageInput = z.infer<
 const ExtractTextFromImageOutputSchema = z.object({
   extractedText: z
     .string()
-    .describe('The extracted text from the image, if any.'),
+    .describe('The extracted text from the image or document, if any.'),
 });
 export type ExtractTextFromImageOutput = z.infer<
   typeof ExtractTextFromImageOutputSchema
@@ -40,15 +40,15 @@ const extractTextFromImagePrompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
-  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided image, which contains scientific summaries for exam preparation.
+  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided image or document, which contains scientific summaries for exam preparation.
 
 Pay close attention to the structure, including headings, bullet points, numbered lists, and any scientific formulas or equations. Preserve the original formatting as much as possible.
 
 Ignore any handwritten notes, colorful highlights, or other markings that are not part of the original printed text. The goal is to get a clean, accurate transcription of the study material.
 
-Extract the text from the following image.
+Extract the text from the following image or document.
 
-Image: {{media url=photoDataUri}}`,
+Document: {{media url=photoDataUri}}`,
 });
 
 const extractTextFromImageFlow = ai.defineFlow(

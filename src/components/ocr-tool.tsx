@@ -27,13 +27,15 @@ import {
   Trash2,
   Upload,
   XCircle,
+  FileText,
 } from 'lucide-react';
 import Image from 'next/image';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 
-interface ImageData {
+interface FileData {
   url: string;
   file: File;
+  type: 'image' | 'pdf';
 }
 
 interface ExtractionProgress {
@@ -42,7 +44,7 @@ interface ExtractionProgress {
 }
 
 export default function OcrTool() {
-  const [images, setImages] = useState<ImageData[]>([]);
+  const [files, setFiles] = useState<FileData[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isProofreading, setIsProofreading] = useState(false);
   const [isCorrectingSpelling, setIsCorrectingSpelling] = useState(false);
@@ -72,14 +74,15 @@ export default function OcrTool() {
     }
   }, [activeExtractionId, extractions]);
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newImages: ImageData[] = Array.from(files).map((file) => ({
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (selectedFiles) {
+      const newFiles: FileData[] = Array.from(selectedFiles).map((file) => ({
         url: URL.createObjectURL(file),
         file: file,
+        type: file.type.startsWith('image/') ? 'image' : 'pdf',
       }));
-      setImages((prev) => [...prev, ...newImages]);
+      setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
@@ -92,19 +95,19 @@ export default function OcrTool() {
     });
 
   const handleExtraction = async (mode: 'new' | 'continue') => {
-    if (images.length === 0) return;
+    if (files.length === 0) return;
     setIsExtracting(true);
     setError(null);
-    setExtractionProgress({ current: 0, total: images.length });
+    setExtractionProgress({ current: 0, total: files.length });
 
     let allTexts: string[] = [];
     let newExtractionId: number | null = null;
 
     try {
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        setExtractionProgress({ current: i + 1, total: images.length });
-        const photoDataUri = await toBase64(image.file);
+      for (let i = 0; i < files.length; i++) {
+        const fileData = files[i];
+        setExtractionProgress({ current: i + 1, total: files.length });
+        const photoDataUri = await toBase64(fileData.file);
         const result = await extractTextFromImage({ photoDataUri });
         allTexts.push(result.extractedText);
       }
@@ -144,7 +147,7 @@ export default function OcrTool() {
     } finally {
       setIsExtracting(false);
       setExtractionProgress(null);
-      setImages([]);
+      setFiles([]);
     }
   };
 
@@ -223,9 +226,9 @@ export default function OcrTool() {
     }, 2000);
   };
 
-  const removeImage = (imageUrl: string) => {
-    setImages((prev) => prev.filter((img) => img.url !== imageUrl));
-    URL.revokeObjectURL(imageUrl);
+  const removeFile = (fileUrl: string) => {
+    setFiles((prev) => prev.filter((f) => f.url !== fileUrl));
+    URL.revokeObjectURL(fileUrl);
   };
 
   const handleDeleteExtraction = async () => {
@@ -255,21 +258,21 @@ export default function OcrTool() {
               <input
                 type="file"
                 ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
+                onChange={handleFileChange}
+                accept="image/*,application/pdf"
                 className="hidden"
                 multiple
               />
               <Upload className="h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-lg font-semibold text-foreground">
-                انقر لتحميل الصور
+                انقر لتحميل الصور أو ملفات PDF
               </p>
               <p className="text-sm text-muted-foreground">
-                PNG, JPG, WEBP, etc.
+                PNG, JPG, PDF, etc.
               </p>
             </div>
 
-            {images.length > 0 && (
+            {files.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Button
                   onClick={() => handleExtraction('new')}
@@ -294,7 +297,7 @@ export default function OcrTool() {
                   ) : (
                     <Upload className="ml-2 h-4 w-4" />
                   )}
-                  استكمال الاستخراج ({images.length})
+                  استكمال الاستخراج ({files.length})
                 </Button>
               </div>
             )}
@@ -309,23 +312,32 @@ export default function OcrTool() {
                   className="w-full h-2"
                 />
                 <p className="text-sm text-muted-foreground">
-                  جاري معالجة الصورة {extractionProgress.current} من{' '}
+                  جاري معالجة الملف {extractionProgress.current} من{' '}
                   {extractionProgress.total}
                 </p>
               </div>
             )}
 
-            {images.length > 0 && (
+            {files.length > 0 && (
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                {images.map(({ url }) => (
+                {files.map(({ url, type }) => (
                   <div key={url} className="relative aspect-square group">
-                    <Image
-                      src={url}
-                      alt="Uploaded preview"
-                      fill
-                      className="object-cover rounded-md"
-                      data-ai-hint="document photo"
-                    />
+                    {type === 'image' ? (
+                      <Image
+                        src={url}
+                        alt="Uploaded preview"
+                        fill
+                        className="object-cover rounded-md"
+                        data-ai-hint="document photo"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full bg-muted rounded-md p-2">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground mt-2 text-center break-all">
+                          PDF
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Button
                         size="icon"
@@ -333,7 +345,7 @@ export default function OcrTool() {
                         className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeImage(url);
+                          removeFile(url);
                         }}
                       >
                         <XCircle className="h-4 w-4" />
@@ -382,7 +394,7 @@ export default function OcrTool() {
             </div>
 
             <div className="flex flex-col gap-2 h-full">
-              <div className="flex justify-end items-center min-h-[40px] gap-2">
+              <div className="flex justify-end items-center min-h-[40px] gap-2 flex-wrap">
                 {extractedText && !isBusy && (
                   <>
                     <Button
