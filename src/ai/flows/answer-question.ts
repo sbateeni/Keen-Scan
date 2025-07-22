@@ -88,8 +88,7 @@ const answerQuestionFlow = ai.defineFlow(
 
     const promptInput = {...input, instruction};
     const model = googleAI({apiKey: input.apiKey});
-    const {output} = await ai.run(answerQuestionPrompt, {
-      input: promptInput,
+    const {output} = await answerQuestionPrompt(promptInput, {
       model,
     });
     return output!;

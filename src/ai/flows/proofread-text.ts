@@ -53,7 +53,7 @@ const proofreadTextFlow = ai.defineFlow(
       return {proofreadText: ''};
     }
     const model = googleAI({apiKey: input.apiKey});
-    const {output} = await ai.run(proofreadTextPrompt, {input: input, model});
+    const {output} = await proofreadTextPrompt(input, {model});
     return output!;
   }
 );
