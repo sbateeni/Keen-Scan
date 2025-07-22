@@ -1,8 +1,5 @@
 import ApiKeyManager from '@/components/api-key-manager';
 import OcrTool from '@/components/ocr-tool';
-import { Button } from '@/components/ui/button';
-import { MessageCircleQuestion, NotebookText } from 'lucide-react';
-import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -16,19 +13,7 @@ export default function Home() {
             Upload an image to instantly extract, edit, and copy text with our
             AI-powered OCR tool.
           </p>
-          <div className="absolute top-0 right-0 flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/saved">
-                <NotebookText />
-                <span>النصوص المحفوظة</span>
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/qa">
-                <MessageCircleQuestion />
-                <span>اسأل المستند</span>
-              </Link>
-            </Button>
+          <div className="absolute top-0 right-0">
             <ApiKeyManager />
           </div>
         </header>

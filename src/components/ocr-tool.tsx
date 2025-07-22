@@ -1,19 +1,16 @@
 'use client';
 
 import {extractTextFromImage} from '@/ai/flows/extract-text-from-image';
-import {proofreadText} from '@/ai/flows/proofread-text';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent} from '@/components/ui/card';
 import {Progress} from '@/components/ui/progress';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
-import {db} from '@/lib/db';
 import {getApiKey} from '@/lib/keys';
 import {
   Check,
   Clipboard,
   Loader2,
-  Save,
   Trash2,
   Upload,
   Wand2,
@@ -94,14 +91,7 @@ export default function OcrTool() {
         const result = await extractTextFromImage({apiKey, photoDataUri});
         allTexts.push(result.extractedText);
       }
-
-      setExtractionProgress(null);
-      setCombinedText('--- جارٍ التدقيق الإملائي وتنسيق النص ---');
-      const proofreadResult = await proofreadText({
-        apiKey,
-        text: allTexts.join('\n\n'),
-      });
-      setCombinedText(proofreadResult.proofreadText);
+      setCombinedText(allTexts.join('\n\n'));
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -129,29 +119,6 @@ export default function OcrTool() {
     setTimeout(() => {
       setIsCopied(false);
     }, 2000);
-  };
-
-  const handleSave = async () => {
-    if (!combinedText.trim()) return;
-
-    try {
-      await db.savedTexts.add({
-        text: combinedText,
-        date: new Date(),
-      });
-
-      toast({
-        title: 'تم الحفظ بنجاح',
-        description: 'يمكنك عرض النص في صفحة النصوص المحفوظة.',
-      });
-    } catch (error) {
-      console.error('Failed to save text to DB', error);
-      toast({
-        variant: 'destructive',
-        title: 'فشل الحفظ',
-        description: 'لم نتمكن من حفظ النص في قاعدة البيانات.',
-      });
-    }
   };
 
   const removeImage = (imageUrl: string) => {
@@ -253,13 +220,9 @@ export default function OcrTool() {
           {(isExtractingAll || combinedText || error) && (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center min-h-[32px]">
-                <h3 className="font-semibold">النتائج المدمجة</h3>
+                <h3 className="font-semibold">النتائج</h3>
                 {combinedText && !isExtractingAll && (
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleSave}>
-                      <Save className="h-4 w-4" />
-                      <span className="mr-2">حفظ</span>
-                    </Button>
                     <Button variant="ghost" size="sm" onClick={handleCopy}>
                       {isCopied ? (
                         <Check className="h-4 w-4 text-primary" />
@@ -308,7 +271,7 @@ export default function OcrTool() {
                   <Textarea
                     placeholder="سيظهر النص المستخرج هنا."
                     value={combinedText}
-                    readOnly={isExtractingAll && extractionProgress !== null}
+                    readOnly={isExtractingAll}
                     onChange={e => setCombinedText(e.target.value)}
                     className="w-full h-full resize-y text-base min-h-[200px] leading-relaxed"
                     dir="rtl"
