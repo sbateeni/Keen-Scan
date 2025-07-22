@@ -2,6 +2,7 @@
 
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
 import { proofreadText } from '@/ai/flows/proofread-text';
+import { correctSpelling } from '@/ai/flows/correct-spelling';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -22,6 +23,7 @@ import {
   FilePlus,
   Loader2,
   Sparkles,
+  SpellCheck,
   Trash2,
   Upload,
   XCircle,
@@ -43,6 +45,7 @@ export default function OcrTool() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isProofreading, setIsProofreading] = useState(false);
+  const [isCorrectingSpelling, setIsCorrectingSpelling] = useState(false);
   const [extractionProgress, setExtractionProgress] =
     useState<ExtractionProgress | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -175,6 +178,37 @@ export default function OcrTool() {
       setIsProofreading(false);
     }
   };
+  
+  const handleCorrectSpelling = async () => {
+    if (!extractedText) return;
+    setIsCorrectingSpelling(true);
+    setError(null);
+
+    try {
+      const { correctedText } = await correctSpelling({
+        text: extractedText,
+      });
+      setExtractedText(correctedText);
+      if (activeExtractionId) {
+        await db.extractions.update(activeExtractionId, { text: correctedText });
+      }
+      toast({
+        title: 'تم التصحيح الإملائي بنجاح',
+        description: 'تم تصحيح الأخطاء الإملائية وحفظ التغييرات.',
+      });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'فشل التصحيح الإملائي',
+        description: 'حدث خطأ ما أثناء تصحيح النص.',
+      });
+    } finally {
+      setIsCorrectingSpelling(false);
+    }
+  };
 
   const handleCopy = () => {
     if (!extractedText) return;
@@ -206,7 +240,7 @@ export default function OcrTool() {
     });
   };
 
-  const isBusy = isExtracting || isProofreading;
+  const isBusy = isExtracting || isProofreading || isCorrectingSpelling;
 
   return (
     <Card className="w-full shadow-lg overflow-hidden border-border/50">
@@ -354,6 +388,19 @@ export default function OcrTool() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={handleCorrectSpelling}
+                      disabled={isCorrectingSpelling}
+                    >
+                      {isCorrectingSpelling ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <SpellCheck className="h-4 w-4" />
+                      )}
+                      <span className="mr-2">تصحيح إملائي</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={handleProofreadText}
                       disabled={isProofreading}
                     >
@@ -364,7 +411,6 @@ export default function OcrTool() {
                       )}
                       <span className="mr-2">تدقيق وتحسين</span>
                     </Button>
-
                     <Button variant="ghost" size="sm" onClick={handleCopy}>
                       {isCopied ? (
                         <Check className="h-4 w-4 text-primary" />
