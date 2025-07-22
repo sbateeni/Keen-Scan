@@ -88,7 +88,7 @@ export default function OcrTool() {
       toast({
         variant: 'destructive',
         title: 'فشل الاستخراج',
-        description: 'يرجى المحاولة مرة أخرى بصورة مختلفة أو التأكد من مفتاح API.',
+        description: 'يرجى المحاولة مرة أخرى أو التأكد من مفتاح API الخاص بك.',
       });
     } finally {
       setIsExtractingAll(false);
@@ -102,7 +102,7 @@ export default function OcrTool() {
     setIsCopied(true);
     toast({
       title: 'تم النسخ إلى الحافظة!',
-      description: 'تم نسخ النص المستخرج.',
+      description: 'تم نسخ النص المستخرج بنجاح.',
     });
     setTimeout(() => {
       setIsCopied(false);
