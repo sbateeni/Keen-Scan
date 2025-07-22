@@ -1,6 +1,6 @@
 'use client';
 
-import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
+import { extractTextFromDocument } from '@/ai/flows/extract-text-from-image';
 import { proofreadText } from '@/ai/flows/proofread-text';
 import { correctSpelling } from '@/ai/flows/correct-spelling';
 import { Button } from '@/components/ui/button';
@@ -107,8 +107,9 @@ export default function OcrTool() {
       for (let i = 0; i < files.length; i++) {
         const fileData = files[i];
         setExtractionProgress({ current: i + 1, total: files.length });
-        const photoDataUri = await toBase64(fileData.file);
-        const result = await extractTextFromImage({ photoDataUri });
+        const documentDataUri = await toBase64(fileData.file);
+        const isPdf = fileData.type === 'pdf';
+        const result = await extractTextFromDocument({ documentDataUri, isPdf });
         allTexts.push(result.extractedText);
       }
       const newText = allTexts.join('\n\n');
