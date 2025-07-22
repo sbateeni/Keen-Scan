@@ -29,9 +29,6 @@ export type ProofreadTextOutput = z.infer<typeof ProofreadTextOutputSchema>;
 export async function proofreadText(
   input: ProofreadTextInput
 ): Promise<ProofreadTextOutput> {
-  ai.configure({
-    plugins: [googleAI({apiKey: input.apiKey})],
-  });
   return proofreadTextFlow(input);
 }
 
@@ -55,7 +52,8 @@ const proofreadTextFlow = ai.defineFlow(
     if (!input.text.trim()) {
       return {proofreadText: ''};
     }
-    const {output} = await proofreadTextPrompt(input);
+    const model = googleAI({apiKey: input.apiKey});
+    const {output} = await ai.run(proofreadTextPrompt, {input: input, model});
     return output!;
   }
 );

@@ -37,9 +37,6 @@ export type AnswerQuestionOutput = z.infer<typeof AnswerQuestionOutputSchema>;
 export async function answerQuestion(
   input: AnswerQuestionInput
 ): Promise<AnswerQuestionOutput> {
-  ai.configure({
-    plugins: [googleAI({apiKey: input.apiKey})],
-  });
   return answerQuestionFlow(input);
 }
 
@@ -90,7 +87,11 @@ const answerQuestionFlow = ai.defineFlow(
     }
 
     const promptInput = {...input, instruction};
-    const {output} = await answerQuestionPrompt(promptInput);
+    const model = googleAI({apiKey: input.apiKey});
+    const {output} = await ai.run(answerQuestionPrompt, {
+      input: promptInput,
+      model,
+    });
     return output!;
   }
 );

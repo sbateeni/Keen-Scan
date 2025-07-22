@@ -35,9 +35,6 @@ export type ExtractTextFromImageOutput = z.infer<
 export async function extractTextFromImage(
   input: ExtractTextFromImageInput
 ): Promise<ExtractTextFromImageOutput> {
-  ai.configure({
-    plugins: [googleAI({apiKey: input.apiKey})],
-  });
   return extractTextFromImageFlow(input);
 }
 
@@ -63,7 +60,11 @@ const extractTextFromImageFlow = ai.defineFlow(
     outputSchema: ExtractTextFromImageOutputSchema,
   },
   async input => {
-    const {output} = await extractTextFromImagePrompt(input);
+    const model = googleAI({apiKey: input.apiKey});
+    const {output} = await ai.run(extractTextFromImagePrompt, {
+      input: input,
+      model,
+    });
     return output!;
   }
 );
