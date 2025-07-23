@@ -1,6 +1,6 @@
 'use client';
 
-import { extractTextFromImage } from '@/ai/flows/extract-text-from-image';
+import { extractTextFromDocument } from '@/ai/flows/extract-text-from-document';
 import { proofreadText } from '@/ai/flows/proofread-text';
 import { correctSpelling } from '@/ai/flows/correct-spelling';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { db, type Extraction } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -107,8 +113,9 @@ export default function OcrTool() {
       for (let i = 0; i < files.length; i++) {
         const fileData = files[i];
         setExtractionProgress({ current: i + 1, total: files.length });
-        const photoDataUri = await toBase64(fileData.file);
-        const result = await extractTextFromImage({ photoDataUri });
+        const documentDataUri = await toBase64(fileData.file);
+        const isPdf = fileData.type === 'pdf';
+        const result = await extractTextFromDocument({ documentDataUri, isPdf });
         allTexts.push(result.extractedText);
       }
       const newText = allTexts.join('\n\n');
@@ -181,7 +188,7 @@ export default function OcrTool() {
       setIsProofreading(false);
     }
   };
-  
+
   const handleCorrectSpelling = async () => {
     if (!extractedText) return;
     setIsCorrectingSpelling(true);
@@ -205,7 +212,7 @@ export default function OcrTool() {
       setError(errorMessage);
       toast({
         variant: 'destructive',
-        title: 'فشل التصحيح الإملائي',
+        title: 'لماذا فشل التصحيح التلقائي',
         description: 'حدث خطأ ما أثناء تصحيح النص.',
       });
     } finally {
@@ -396,44 +403,61 @@ export default function OcrTool() {
             <div className="flex flex-col gap-2 h-full">
               <div className="flex justify-end items-center min-h-[40px] gap-2 flex-wrap">
                 {extractedText && !isBusy && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCorrectSpelling}
-                      disabled={isCorrectingSpelling}
-                    >
-                      {isCorrectingSpelling ? (
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <SpellCheck className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">تصحيح إملائي</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleProofreadText}
-                      disabled={isProofreading}
-                    >
-                      {isProofreading ? (
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">تدقيق وتحسين</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleCopy}>
-                      {isCopied ? (
-                        <Check className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Clipboard className="h-4 w-4" />
-                      )}
-                      <span className="mr-2">
-                        {isCopied ? 'تم النسخ' : 'نسخ'}
-                      </span>
-                    </Button>
-                  </>
+                  <TooltipProvider>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCorrectSpelling}
+                            disabled={isCorrectingSpelling}
+                          >
+                            {isCorrectingSpelling ? (
+                              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <SpellCheck className="h-4 w-4" />
+                            )}
+                            <span className="mr-2">تصحيح إملائي</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>تصحيح الأخطاء الإملائية وتنسيق الفقرات</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleProofreadText}
+                            disabled={isProofreading}
+                          >
+                            {isProofreading ? (
+                              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                            <span className="mr-2">تدقيق وتحسين</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>تحسين الصياغة والأسلوب وتصحيح كل الأخطاء</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Button variant="ghost" size="sm" onClick={handleCopy}>
+                        {isCopied ? (
+                          <Check className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Clipboard className="h-4 w-4" />
+                        )}
+                        <span className="mr-2">
+                          {isCopied ? 'تم النسخ' : 'نسخ'}
+                        </span>
+                      </Button>
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
 
