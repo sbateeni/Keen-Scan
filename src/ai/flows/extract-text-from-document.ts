@@ -43,30 +43,16 @@ const extractTextFromDocumentPrompt = ai.definePrompt({
   name: 'extractTextFromDocumentPrompt',
   input: {schema: ExtractTextFromDocumentInputSchema},
   output: {schema: ExtractTextFromDocumentOutputSchema},
-  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided document.
+  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your primary and most critical task is to extract every single word from the provided document with the highest possible accuracy.
 
-Pay meticulous attention to the structure and formatting. It is critical to preserve the original layout as closely as possible.
-
-**VERY IMPORTANT Instructions for Tables:**
-- If you detect a table, you MUST preserve its structure using Markdown format.
-- Use pipes (|) to separate columns and newlines to separate rows.
-- Ensure that the text within each cell remains aligned in its respective column to make it easily copy-pastable.
-- Do NOT flatten the table into a single block of text. This is a critical requirement.
-
-**Example of desired table format:**
-
-| Header 1      | Header 2        |
-|---------------|-----------------|
-| Row 1, Cell 1 | Row 1, Cell 2   |
-| Row 2, Cell 1 | Row 2, Cell 2   |
-
-
-**General Formatting:**
-- Preserve headings, bullet points, numbered lists, and indentation.
+**VERY IMPORTANT Instructions:**
+- The absolute priority is to capture all text content accurately. Do not omit any text.
+- Preserve the original structure and layout as best as you can, including headings, bullet points, numbered lists, and indentation.
+- If you detect a table, extract its content while maintaining the logical grouping of information. The exact visual formatting is secondary to capturing all the text within the table correctly.
 - Accurately transcribe any scientific formulas, equations, and special characters.
 - Ignore handwritten notes, highlights, or other markings not part of the original printed text.
 
-The goal is to get a clean, accurate, and complete transcription of the study material, with special emphasis on correctly structured tables.
+The final output must be a clean, complete, and highly accurate transcription of the study material.
 
 {{#if isPdf}}
 The user has provided a multi-page PDF document. Ensure you process every page to extract all content.
