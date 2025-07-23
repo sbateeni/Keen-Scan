@@ -43,24 +43,30 @@ const extractTextFromDocumentPrompt = ai.definePrompt({
   name: 'extractTextFromDocumentPrompt',
   input: {schema: ExtractTextFromDocumentInputSchema},
   output: {schema: ExtractTextFromDocumentOutputSchema},
-  prompt: `{{#if isPdf}}
-You are an expert OCR reader specializing in academic and scientific PDF documents. Your task is to extract all text from all pages of the provided multi-page document.
+  prompt: `You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided document.
 
-Pay close attention to the structure, including headings, bullet points, numbered lists, tables, and any scientific formulas or equations. Preserve the original formatting as much as possible.
+Pay meticulous attention to the structure and formatting. It is critical to preserve the original layout as closely as possible.
 
-Ignore any handwritten notes, colorful highlights, or other markings that are not part of the original printed text. The goal is to get a clean, accurate, and complete transcription of the study material from the entire document.
+**VERY IMPORTANT Instructions for Tables:**
+- If you detect a table, you MUST preserve its structure.
+- Use Markdown-style tables or a similar plain text format that maintains rows and columns.
+- Ensure that the text within each cell remains aligned in its respective column to make it easily copy-pastable.
+- Do not flatten the table into a single block of text. This is a critical requirement.
 
-Extract the text from the following document.
+**General Formatting:**
+- Preserve headings, bullet points, numbered lists, and indentation.
+- Accurately transcribe any scientific formulas, equations, and special characters.
+- Ignore handwritten notes, highlights, or other markings not part of the original printed text.
+
+The goal is to get a clean, accurate, and complete transcription of the study material, with special emphasis on correctly structured tables.
+
+{{#if isPdf}}
+The user has provided a multi-page PDF document. Ensure you process every page to extract all content.
 {{else}}
-You are an expert OCR reader specializing in academic and scientific documents. Your task is to extract all text from the provided image.
-
-Pay close attention to the structure, including headings, bullet points, numbered lists, and any scientific formulas or equations. Preserve the original formatting as much as possible.
-
-Ignore any handwritten notes, colorful highlights, or other markings that are not part of the original printed text. The goal is to get a clean, accurate transcription of the study material.
-
-Extract the text from the following image.
+The user has provided an image. Extract all visible text from it.
 {{/if}}
 
+Extract the text from the following document:
 Document: {{media url=documentDataUri}}`,
 });
 
