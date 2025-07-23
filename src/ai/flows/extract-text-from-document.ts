@@ -48,10 +48,18 @@ const extractTextFromDocumentPrompt = ai.definePrompt({
 Pay meticulous attention to the structure and formatting. It is critical to preserve the original layout as closely as possible.
 
 **VERY IMPORTANT Instructions for Tables:**
-- If you detect a table, you MUST preserve its structure.
-- Use Markdown-style tables or a similar plain text format that maintains rows and columns.
+- If you detect a table, you MUST preserve its structure using Markdown format.
+- Use pipes (|) to separate columns and newlines to separate rows.
 - Ensure that the text within each cell remains aligned in its respective column to make it easily copy-pastable.
-- Do not flatten the table into a single block of text. This is a critical requirement.
+- Do NOT flatten the table into a single block of text. This is a critical requirement.
+
+**Example of desired table format:**
+
+| Header 1      | Header 2        |
+|---------------|-----------------|
+| Row 1, Cell 1 | Row 1, Cell 2   |
+| Row 2, Cell 1 | Row 2, Cell 2   |
+
 
 **General Formatting:**
 - Preserve headings, bullet points, numbered lists, and indentation.
